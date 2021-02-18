@@ -5,9 +5,9 @@ const CriticalSection = require("promise-critical-section");
 module.exports = async ({
     vid = 0x04D8,
     pid = 0x00DD,
-    irq: gpIrq,
-    trg: gpTrg,
-    act: enableLedI2C
+    irq: gpIrq = 0,
+    trg: gpTrg = 1,
+    noAct: disableLedI2C = true
 }) => {
 
     let deviceCriticalSection = new CriticalSection();
@@ -31,7 +31,6 @@ module.exports = async ({
         console.info("error", error);
     });
 
-
     async function command(request) {
         deviceCriticalSection.enter();
         try {
@@ -50,23 +49,36 @@ module.exports = async ({
                 }
 
             });
-            device.write(request);            
+            device.write(request);
             return await promise;
         } finally {
             deviceCriticalSection.leave();
         }
     }
 
-    let setupGpioRequest = [
-        0x60, 0, 0, 0, 0, 0, 0,
-        1 << 7 // 7: alter GP designation
-        
-    ];
+    let triggerState = 1;
 
-    let response = await command(setupGpioRequest);
-    console.info("response:", response)
+    async function updateGpio() {
 
-    device.close();
+        let request = [
+            0x60, 0, 0, 0, 0, 0, 0,
+            1 << 7, // 7: alter GP designation
+            4 << 1, // GP0, by default output/hi
+            4 << 1, // GP1, by default output/hi
+            4 << 1, // GP2, by default output/hi
+            disableLedI2C ? 4 << 1 : 1  // GP3, I2C LED, if enabled, output/hi otherwise
+        ];
+
+        request[gpIrq + 8] = 1 << 3; // input
+        request[gpTrg + 8] = triggerState ? 1 << 4 : 0; // output
+
+
+        await command(request);
+
+    }
+
+    await updateGpio();
+
 
     return {
         async read(address, length) {
@@ -80,6 +92,11 @@ module.exports = async ({
             let buffer = Buffer.from(data);
             let written = await bus.i2cWrite(parseInt(address), data.length, buffer);
             checkWrite(written, data.length);
+        },
+
+        async trigger(state) {
+            triggerState = state;
+            await updateGpio();
         },
 
         async close() {
