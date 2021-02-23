@@ -1,0 +1,15 @@
+{
+  "name": "i2c-bridge",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@si14/si-atsamd-safeboot": "^1.0.2",
+    "@si14/si-atsamd11c14a": "^2.0.2"
+  }
+}

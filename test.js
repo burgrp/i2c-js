@@ -4,11 +4,21 @@ async function start() {
 
     let i2c = await I2C("MCP2221");
 
-    await i2c.trigger(0);
-    await i2c.trigger(1);
+    i2c.onIrq(() => {
+        console.info("IRQ");
+    });
 
-    //console.info(await i2c.read(0x44, 1));
+    try {
+        while (true) {
+            // await i2c.trigger(true);
+            // await i2c.trigger(false);
+            console.info(await i2c.read(0x4F, 2));
 
+            await new Promise(resolve => setTimeout(resolve, 500));
+        }
+    } finally {
+        await i2c.close();
+    }
 }
 
 start().catch(e => console.error(e));
