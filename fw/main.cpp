@@ -9,35 +9,43 @@ wireshark
 class ToggleTimer : public genericTimer::Timer {
 
   void onTimer() {
-    // target::PORT.OUTTGL.setOUTTGL(1 << LED_PIN);
+    target::PORT.OUTTGL.setOUTTGL(1 << LED_PIN);
     start(10);
   }
 };
 
 ToggleTimer timer;
 
-class TestUsbDevice: public atsamd::usbd::AtSamdUsbDevice {
+class TestInterface : public usbd::UsbInterface {};
+
+class TestConfiguration : public usbd::UsbConfiguration {
 public:
-  void initTestUsbDevice() {
-    initAtSamdUsbDevice();
+  TestInterface testInterface;
+  void init() { 
+    interfaces[0] = &testInterface;
+    usbd::UsbConfiguration::init(); 
   }
 };
 
-TestUsbDevice testUsbDevice;
+class TestDevice : public atsamd::usbd::AtSamdUsbDevice {
 
-void interruptHandlerUSB() {
-  testUsbDevice.interruptHandlerUSB();
-}
+public:
+  TestConfiguration testConfiguration;
+  void init() {
+    configurations[0] = &testConfiguration;
+    atsamd::usbd::AtSamdUsbDevice::init();
+  }
+};
 
+TestDevice testDevice;
+
+void interruptHandlerUSB() { testDevice.interruptHandlerUSB(); }
 
 void initApplication() {
 
   atsamd::safeboot::init(9, false, LED_PIN);
 
   timer.start(10);
-
-  testUsbDevice.initTestUsbDevice();
-
 
   target::PORT.PMUX[4].setPMUXE(target::port::PMUX::PMUXE::H);
   target::PORT.PINCFG[8].setPMUXEN(true);
@@ -48,6 +56,5 @@ void initApplication() {
   target::PORT.PMUX[8].setPMUXE(target::port::PMUX::PMUXE::H);
   target::PORT.PINCFG[16].setPMUXEN(true);
 
-
-  // target::USB.DEVICE.EPINTENSET[0].reg = 1 << 4;
+  testDevice.init();
 }

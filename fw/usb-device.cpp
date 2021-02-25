@@ -1,8 +1,84 @@
 namespace usbd {
 
+const int MAX_ENDPOINTS = 8;
+const int MAX_INTERFACES = 8;
+const int MAX_CONFIGURATIONS = 8;
+
+class UsbDevice;
+class UsbConfiguration;
+class UsbInterface;
+class UsbEndpoint;
+
+class UsbEndpoint {
+public:
+  UsbInterface *interface;
+
+  virtual void init() {}
+};
+
+class UsbInterface {
+public:
+  UsbConfiguration *configuration;
+  UsbEndpoint *endpoints[MAX_ENDPOINTS];
+
+  virtual void init() {
+    for (int c = 0; endpoints[c]; c++) {
+      endpoints[c]->interface = this;
+      endpoints[c]->init();
+    }
+  }
+};
+
+class UsbConfiguration {
+public:
+  UsbDevice *device;
+  UsbInterface *interfaces[MAX_INTERFACES];
+
+  virtual void init() {
+    for (int c = 0; interfaces[c]; c++) {
+      interfaces[c]->configuration = this;
+      interfaces[c]->init();
+    }
+  }
+};
+
+class ControlEndpoint : public UsbEndpoint {};
+
 class UsbDevice {
 public:
-  void initUsbDevice() {}
+  UsbConfiguration *configurations[MAX_CONFIGURATIONS];
+
+  int currentConfiguration;
+  ControlEndpoint controlEndpoint;
+
+  UsbEndpoint *endpoints[MAX_ENDPOINTS];
+  int endpointCount;
+
+  void selectConfiguration(int index) {
+
+    currentConfiguration = index;
+    endpointCount = 0;
+
+    endpoints[endpointCount++] = &controlEndpoint;
+
+    if (configurations[currentConfiguration]) {
+      UsbConfiguration *configuration = configurations[currentConfiguration];
+      for (int i = 0; configuration->interfaces[i]; i++) {
+        UsbInterface *interface = configuration->interfaces[i];
+        for (int e = 0; interface->endpoints[e]; e++) {
+          endpoints[endpointCount++] = interface->endpoints[e];
+        }
+      }
+    }
+  }
+
+  virtual void init() {
+    for (int c = 0; configurations[c]; c++) {
+      configurations[c]->device = this;
+      configurations[c]->init();
+    }
+    selectConfiguration(0);
+  }
 };
 
 } // namespace usbd
@@ -38,7 +114,9 @@ class AtSamdUsbDevice : public UsbDevice {
   int addressToSet;
 
 public:
-  void initAtSamdUsbDevice() {
+  void init() {
+
+    UsbDevice::init();
 
     // GC0 8MHz
 
@@ -114,8 +192,8 @@ public:
     target::USB.DEVICE.CTRLB.setDETACH(false);
     target::USB.DEVICE.CTRLA.setENABLE(true);
 
-    initUsbDevice();
     usbReset();
+
   }
 
   void usbReset() {
