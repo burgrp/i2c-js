@@ -34,6 +34,9 @@ unsigned int usbDescriptor[8] = {(unsigned int)&buffer0,
                                  0};
 
 class AtSamdUsbDevice : public UsbDevice {
+
+  int addressToSet;
+
 public:
   void initAtSamdUsbDevice() {
 
@@ -119,10 +122,11 @@ public:
     target::USB.DEVICE.EPCFG[0].reg.setEPTYPE(0, 1);
     target::USB.DEVICE.EPCFG[0].reg.setEPTYPE(1, 1);
     target::USB.DEVICE.DESCADD.setDESCADD((unsigned long)&usbDescriptor);
-    target::USB.DEVICE.EPINTENSET[0].reg.setRXSTP(true)
-        // .setTRCPT(0, true)
-        // .setTRCPT(1, true)
-        ;
+    target::USB.DEVICE.EPINTENSET[0]
+        .reg
+        .setRXSTP(true)
+        //.setTRCPT(0, true)
+        .setTRCPT(1, true);
   }
 
   void interruptHandlerUSB() {
@@ -131,11 +135,13 @@ public:
       usbReset();
     }
 
-    // for (int bank = 0; bank <= 1; bank++) {
-    //   if (target::USB.DEVICE.EPINTFLAG[0].reg.getTRCPT(bank)) {
-    //     target::USB.DEVICE.EPINTFLAG[0].reg.setTRCPT(bank, true);
-    //   }
-    // }
+    if (target::USB.DEVICE.EPINTFLAG[0].reg.getTRCPT(1)) {
+      target::USB.DEVICE.EPINTFLAG[0].reg.setTRCPT(1, true);
+      if (addressToSet) {
+        target::USB.DEVICE.DADD = addressToSet;
+        addressToSet = 0;
+      }
+    }
 
     if (target::USB.DEVICE.EPINTFLAG[0].reg.getRXSTP()) {
       target::USB.DEVICE.EPINTFLAG[0].reg.setRXSTP(true);
@@ -147,9 +153,7 @@ public:
         usbDescriptor[5] = (unsigned int)1 << 31 | 0x3 << 28;
         target::USB.DEVICE.EPSTATUSSET[0].reg.setBK_RDY(1, true);
 
-        for (volatile int c = 0; c < 1000; c++)
-          ;
-        target::USB.DEVICE.DADD = 0x80 | buffer0.setup.wValue;
+        addressToSet = 0x80 | buffer0.setup.wValue;
       }
 
       // GET_DESCRIPTOR
