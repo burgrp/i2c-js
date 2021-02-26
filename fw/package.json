@@ -14,6 +14,7 @@
   "silicon": {
     "sources": [
       "usb-device.cpp",
+      "usb-device-atsamd.cpp",
       "main.cpp"
     ],
     "symbols": {

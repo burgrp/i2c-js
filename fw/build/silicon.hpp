@@ -88,6 +88,7 @@ namespace target {
 #include "/home/paul/git/i2c-js/fw/node_modules/@si14/si-generic-timer/generic-timer.cpp"
 #include "/home/paul/git/i2c-js/fw/node_modules/@si14/si-systick-timer/systick-timer.cpp"
 #include "/home/paul/git/i2c-js/fw/usb-device.cpp"
+#include "/home/paul/git/i2c-js/fw/usb-device-atsamd.cpp"
 #include "/home/paul/git/i2c-js/fw/main.cpp"
 
 #endif // SILICON_HPP

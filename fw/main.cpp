@@ -18,21 +18,12 @@ ToggleTimer timer;
 
 class TestInterface : public usbd::UsbInterface {};
 
-class TestConfiguration : public usbd::UsbConfiguration {
-public:
-  TestInterface testInterface;
-  void init() { 
-    interfaces[0] = &testInterface;
-    usbd::UsbConfiguration::init(); 
-  }
-};
-
 class TestDevice : public atsamd::usbd::AtSamdUsbDevice {
 
 public:
-  TestConfiguration testConfiguration;
+  TestInterface testInterface;
   void init() {
-    configurations[0] = &testConfiguration;
+    interfaces[0] = &testInterface;
     atsamd::usbd::AtSamdUsbDevice::init();
   }
 };
