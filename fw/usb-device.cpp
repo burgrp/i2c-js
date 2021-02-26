@@ -46,7 +46,7 @@ public:
   }
 };
 
-class ControlEndpoint : public UsbEndpoint {
+class UsbControlEndpoint : public UsbEndpoint {
 public:
   unsigned char rxBuffer[64];
   unsigned char txBuffer[64];
@@ -94,7 +94,7 @@ public:
   UsbEndpoint *endpoints[MAX_ENDPOINTS];
   int endpointCount;
 
-  ControlEndpoint controlEndpoint;
+  UsbControlEndpoint controlEndpoint;
 
   virtual void init() {
 
@@ -128,7 +128,7 @@ void UsbEndpoint::startTx(int length) {
   device->startTx(index, length);
 }
 
-void ControlEndpoint::setDeviceAddress(int address) {
+void UsbControlEndpoint::setDeviceAddress(int address) {
   device->setAddress(address);
 }
 
