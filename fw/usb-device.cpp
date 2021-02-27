@@ -88,7 +88,7 @@ struct __attribute__((packed)) EndpointDescriptor {
     TransferType transferType : 2;
     SynchronizationType synchronizationType : 2;
     UsageType usageType : 2;
-    unsigned char : 3;
+    unsigned char : 2;
   } bmAttributes;
   unsigned short wMaxPacketSize; // Maximum packet size for this endpoint
   unsigned char bInterval;       // Polling interval in milliseconds for interrupt endpoints
@@ -98,7 +98,7 @@ class UsbEndpoint {
 public:
   UsbInterface *interface;
   UsbDevice *device;
-  TransferType transferType = CONTROL;
+  TransferType transferType = INTERRUPT;
   unsigned char *rxBufferPtr;
   unsigned int rxBufferSize;
   unsigned char *txBufferPtr;
@@ -106,6 +106,7 @@ public:
   unsigned int index;
   virtual void init() {}
   virtual void setup(SetupData *setupData) {}
+  virtual void checkDescriptor(EndpointDescriptor *deviceDesriptor){};
   void startTx(int length);
   void stall();
 };
@@ -122,6 +123,8 @@ public:
       endpoints[c]->init();
     }
   }
+
+  virtual void checkDescriptor(InterfaceDescriptor *deviceDesriptor){};
 };
 
 class UsbControlEndpoint : public UsbEndpoint {
@@ -132,6 +135,7 @@ public:
   void setup(SetupData *setupData);
 
   void init() {
+    transferType = CONTROL;
     rxBufferPtr = rxBuffer;
     rxBufferSize = sizeof(rxBuffer);
     txBufferPtr = txBuffer;
@@ -176,7 +180,7 @@ public:
   virtual void stall(int epIndex) = 0;
   virtual void setAddress(int address) = 0;
 
-  virtual void getDescriptor(DeviceDescriptor *deviceDesriptor) = 0;
+  virtual void checkDescriptor(DeviceDescriptor *deviceDesriptor){};
 };
 
 void UsbEndpoint::startTx(int length) { device->startTx(index, length); }
@@ -191,16 +195,16 @@ void UsbControlEndpoint::setup(SetupData *setupData) {
 
     if (descriptorType == DESCRIPTOR_TYPE_DEVICE) {
 
-      DeviceDescriptor *desriptor = (DeviceDescriptor *)txBufferPtr;
-      memset(desriptor, 0, sizeof(DeviceDescriptor));
+      DeviceDescriptor *deviceDesriptor = (DeviceDescriptor *)txBufferPtr;
+      memset(deviceDesriptor, 0, sizeof(DeviceDescriptor));
 
-      desriptor->bLength = sizeof(DeviceDescriptor);
-      desriptor->bDescriptorType = DESCRIPTOR_TYPE_DEVICE;
-      desriptor->bcdUSB = 0x200;
-      desriptor->bMaxPacketSize0 = sizeof(rxBuffer);
-      desriptor->bNumConfigurations = 1;
+      deviceDesriptor->bLength = sizeof(DeviceDescriptor);
+      deviceDesriptor->bDescriptorType = DESCRIPTOR_TYPE_DEVICE;
+      deviceDesriptor->bcdUSB = 0x200;
+      deviceDesriptor->bMaxPacketSize0 = sizeof(rxBuffer);
+      deviceDesriptor->bNumConfigurations = 1;
 
-      device->getDescriptor(desriptor);
+      device->checkDescriptor(deviceDesriptor);
 
       startTx(sizeof(DeviceDescriptor));
 
@@ -218,25 +222,52 @@ void UsbControlEndpoint::setup(SetupData *setupData) {
 
       totalLength += sizeof(ConfigurationDescriptor);
 
-      for (int i = 0; device->interfaces[i]; i++) {     
+      for (int i = 0; device->interfaces[i]; i++) {
 
-        if (setupData->wLength > sizeof(ConfigurationDescriptor)) {
-          UsbInterface *interface = device->interfaces[i];
-
-          InterfaceDescriptor *interfaceDescriptor = (InterfaceDescriptor *)(txBuffer + totalLength);
-          memset(interfaceDescriptor, 0, sizeof(InterfaceDescriptor));
-          interfaceDescriptor->bLength = sizeof(InterfaceDescriptor);
-          interfaceDescriptor->bDescriptorType = DESCRIPTOR_TYPE_INTERFACE;
-          interfaceDescriptor->bInterfaceNumber = i;
-
-          totalLength += sizeof(InterfaceDescriptor);
-        }
-
+        UsbInterface *interface = device->interfaces[i];
         configurationDescriptor->bNumInterfaces++;
+
+        InterfaceDescriptor *interfaceDescriptor = (InterfaceDescriptor *)(txBuffer + totalLength);
+        memset(interfaceDescriptor, 0, sizeof(InterfaceDescriptor));
+        interfaceDescriptor->bLength = sizeof(InterfaceDescriptor);
+        interfaceDescriptor->bDescriptorType = DESCRIPTOR_TYPE_INTERFACE;
+        interfaceDescriptor->bInterfaceNumber = i;
+
+        interface->checkDescriptor(interfaceDescriptor);
+        totalLength += sizeof(InterfaceDescriptor);
+
+        for (int e = 0; interface->endpoints[e]; e++) {
+          UsbEndpoint *endpoint = interface->endpoints[e];
+          for (int direction = 0; direction <= 1; direction++) {
+
+            int bufferSize = direction ? endpoint->txBufferSize : endpoint->rxBufferSize;
+
+            if (bufferSize) {
+
+              interfaceDescriptor->bNumEndpoints++;
+
+              EndpointDescriptor *endpointDescriptor = (EndpointDescriptor *)(txBuffer + totalLength);
+              memset(endpointDescriptor, 0, sizeof(EndpointDescriptor));
+              endpointDescriptor->bLength = sizeof(EndpointDescriptor);
+              endpointDescriptor->bDescriptorType = DESCRIPTOR_TYPE_ENDPOINT;
+              endpointDescriptor->bEndpointAddress.direction = direction;
+              endpointDescriptor->bEndpointAddress.index = endpoint->index;
+              endpointDescriptor->bmAttributes.transferType = endpoint->transferType;
+              endpointDescriptor->bmAttributes.synchronizationType = NO_SYNCHRONIZATION;
+              endpointDescriptor->bmAttributes.usageType = DATA;
+              endpointDescriptor->wMaxPacketSize = bufferSize;
+              endpointDescriptor->bInterval =
+                  endpoint->transferType == ISOCHRONOUS ? 1 : transferType == INTERRUPT ? 10 : 0;
+
+              endpoint->checkDescriptor(endpointDescriptor);
+              totalLength += sizeof(EndpointDescriptor);
+            }
+          }
+        }
       }
 
       configurationDescriptor->wTotalLength = totalLength;
-      startTx(totalLength);
+      startTx(setupData->wLength < totalLength ? setupData->wLength : totalLength);
 
     } else {
       stall();

@@ -16,7 +16,27 @@ class ToggleTimer : public genericTimer::Timer {
 
 ToggleTimer timer;
 
-class TestInterface : public usbd::UsbInterface {};
+class TestEndpoint: public usbd::UsbEndpoint {
+public:
+  unsigned char rxBuffer[16];  
+  unsigned char txBuffer[64];  
+  void init() {
+    rxBufferPtr = rxBuffer;
+    rxBufferSize = sizeof(rxBuffer);
+    txBufferPtr = txBuffer;
+    txBufferSize = sizeof(txBuffer);
+    usbd::UsbEndpoint::init();
+  }
+};
+
+class TestInterface : public usbd::UsbInterface {
+  public:
+  TestEndpoint testEndpoint;
+  void init() {
+    endpoints[0] = &testEndpoint;
+    usbd::UsbInterface::init();
+  }
+};
 
 class TestDevice : public atsamd::usbd::AtSamdUsbDevice {
 public:
@@ -26,7 +46,7 @@ public:
     atsamd::usbd::AtSamdUsbDevice::init();
   }
 
-  void getDescriptor(DeviceDescriptor *deviceDesriptor){
+  void checkDescriptor(DeviceDescriptor *deviceDesriptor){
     deviceDesriptor->idVendor = 0xAAAA;
     deviceDesriptor->idProduct = 0xBBBB;
     };
