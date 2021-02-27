@@ -35,10 +35,7 @@ public:
 
     target::gclk::GENCTRL::Register gc0;
     gc0 = 0;
-    gc0.setID(0)
-        .setSRC(target::gclk::GENCTRL::SRC::OSC8M)
-        .setGENEN(true)
-        .setOE(true); // PA8
+    gc0.setID(0).setSRC(target::gclk::GENCTRL::SRC::OSC8M).setGENEN(true).setOE(true); // PA8
     target::GCLK.GENCTRL = gc0;
 
     // GC1 32kHz
@@ -47,44 +44,33 @@ public:
 
     target::gclk::GENCTRL::Register gc1;
     gc1 = 0;
-    gc1.setID(1)
-        .setSRC(target::gclk::GENCTRL::SRC::OSC32K)
-        .setGENEN(true)
-        .setOE(true); // PA9
+    gc1.setID(1).setSRC(target::gclk::GENCTRL::SRC::OSC32K).setGENEN(true).setOE(true); // PA9
     target::GCLK.GENCTRL = gc1;
 
     // GC1 -> reference of FDPLL96M
 
     target::gclk::CLKCTRL::Register ccDpllRefClk;
     ccDpllRefClk = 0;
-    ccDpllRefClk.setID(target::gclk::CLKCTRL::ID::FDPLL)
-        .setGEN(target::gclk::CLKCTRL::GEN::GCLK1)
-        .setCLKEN(true);
+    ccDpllRefClk.setID(target::gclk::CLKCTRL::ID::FDPLL).setGEN(target::gclk::CLKCTRL::GEN::GCLK1).setCLKEN(true);
 
     target::GCLK.CLKCTRL = ccDpllRefClk;
 
     // GC2 48MHz
 
-    target::SYSCTRL.DPLLCTRLB.setREFCLK(
-        target::sysctrl::DPLLCTRLB::REFCLK::GCLK);
+    target::SYSCTRL.DPLLCTRLB.setREFCLK(target::sysctrl::DPLLCTRLB::REFCLK::GCLK);
     target::SYSCTRL.DPLLRATIO.setLDR(1490).setLDRFRAC(15);
     target::SYSCTRL.DPLLCTRLA.setENABLE(true);
 
     target::gclk::GENCTRL::Register gc2;
     gc2 = 0;
-    gc2.setID(2)
-        .setSRC(target::gclk::GENCTRL::SRC::DPLL96M)
-        .setGENEN(true)
-        .setOE(true); // PA16
+    gc2.setID(2).setSRC(target::gclk::GENCTRL::SRC::DPLL96M).setGENEN(true).setOE(true); // PA16
     target::GCLK.GENCTRL = gc2;
 
     // GC2 -> USB
 
     target::gclk::CLKCTRL::Register ccUsb;
     ccUsb = 0;
-    ccUsb.setID(target::gclk::CLKCTRL::ID::USB)
-        .setGEN(target::gclk::CLKCTRL::GEN::GCLK2)
-        .setCLKEN(true);
+    ccUsb.setID(target::gclk::CLKCTRL::ID::USB).setGEN(target::gclk::CLKCTRL::GEN::GCLK2).setCLKEN(true);
     target::GCLK.CLKCTRL = ccUsb;
 
     // enable USB pins
@@ -112,13 +98,11 @@ public:
       UsbEndpoint *endpoint = endpoints[e];
 
       for (int bank = 0; bank <= 1; bank++) {
-        unsigned char *data =
-            bank ? endpoint->txBufferPtr : endpoint->rxBufferPtr;
+        unsigned char *data = bank ? endpoint->txBufferPtr : endpoint->rxBufferPtr;
         int size = bank ? endpoint->txBufferSize : endpoint->rxBufferSize;
 
         if (endpoint && data && size) {
-          target::USB.DEVICE.EPCFG[e].reg.setEPTYPE(bank,
-                                                    1 + endpoint->transferType);
+          target::USB.DEVICE.EPCFG[e].reg.setEPTYPE(bank, 1 + endpoint->transferType);
           epDescriptors[e][bank].ADDR = data;
           epDescriptors[e][bank].PCKSIZE.SIZE =
               size == 0
@@ -127,15 +111,8 @@ public:
                         ? 1
                         : size == 32
                               ? 2
-                              : size == 64
-                                    ? 3
-                                    : size == 128
-                                          ? 4
-                                          : size == 256
-                                                ? 5
-                                                : size == 512
-                                                      ? 6
-                                                      : size == 1023 ? 7 : 0;
+                              : size == 64 ? 3
+                                           : size == 128 ? 4 : size == 256 ? 5 : size == 512 ? 6 : size == 1023 ? 7 : 0;
           epDescriptors[e][bank].PCKSIZE.AUTO_ZLP = 1;
 
         } else {
@@ -186,6 +163,8 @@ public:
     epDescriptors[epIndex][1].PCKSIZE.BYTE_COUNT = length;
     target::USB.DEVICE.EPSTATUSSET[epIndex].reg.setBK_RDY(1, true);
   }
+
+  void stall(int epIndex) { target::USB.DEVICE.EPSTATUSSET[epIndex].reg.setSTALLRQ(1, true); }
 
   void setAddress(int address) { addressToSet = address; };
 };

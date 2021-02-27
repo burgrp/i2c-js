@@ -19,13 +19,17 @@ ToggleTimer timer;
 class TestInterface : public usbd::UsbInterface {};
 
 class TestDevice : public atsamd::usbd::AtSamdUsbDevice {
-
 public:
   TestInterface testInterface;
   void init() {
     interfaces[0] = &testInterface;
     atsamd::usbd::AtSamdUsbDevice::init();
   }
+
+  void getDescriptor(DeviceDescriptor *deviceDesriptor){
+    deviceDesriptor->idVendor = 0xAAAA;
+    deviceDesriptor->idProduct = 0xBBBB;
+    };
 };
 
 TestDevice testDevice;
