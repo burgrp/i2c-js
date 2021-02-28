@@ -4,8 +4,6 @@ namespace atsamd::usbd {
 
 class AtSamdUsbDevice : public UsbDevice {
 
-  int addressToSet;
-
   struct {
     unsigned char *ADDR;
     struct {
@@ -92,6 +90,8 @@ public:
     usbReset();
   }
 
+  void setAddress(int address) { target::USB.DEVICE.DADD = 0x80 | address; }
+
   void usbReset() {
 
     for (int e = 0; endpoints[e]; e++) {
@@ -125,9 +125,7 @@ public:
 
     for (int e = 0; endpoints[e]; e++) {
       UsbEndpoint *endpoint = endpoints[e];
-      if (endpoint) {
-        target::USB.DEVICE.EPINTENSET[e].reg.setRXSTP(true).setTRCPT(1, true);
-      }
+      target::USB.DEVICE.EPINTENSET[e].reg.setRXSTP(true).setTRCPT(0, true).setTRCPT(1, true);
     }
   }
 
@@ -139,22 +137,22 @@ public:
 
     for (int e = 0; endpoints[e]; e++) {
       UsbEndpoint *endpoint = endpoints[e];
-      if (endpoint) {
 
-        if (target::USB.DEVICE.EPINTFLAG[e].reg.getTRCPT(1)) {
-          target::USB.DEVICE.EPINTFLAG[e].reg.setTRCPT(1, true);          
-          if (addressToSet && !e) {
-            target::USB.DEVICE.DADD = 0x80 | addressToSet;
-            addressToSet = 0;
-          }
-        }
+      if (target::USB.DEVICE.EPINTFLAG[e].reg.getTRCPT(0)) {
+        endpoint->rxComplete();
+        target::USB.DEVICE.EPINTFLAG[e].reg.setTRCPT(0, true);
+      }
 
-        if (target::USB.DEVICE.EPINTFLAG[e].reg.getRXSTP()) {
-          target::USB.DEVICE.EPINTFLAG[e].reg.setRXSTP(true);
-          endpoint->setup((SetupData *)endpoint->rxBufferPtr);
-          epDescriptors[e][0].PCKSIZE.BYTE_COUNT = 0;
-          target::USB.DEVICE.EPSTATUSCLR[e].reg.setBK_RDY(0, true);
-        }
+      if (target::USB.DEVICE.EPINTFLAG[e].reg.getTRCPT(1)) {
+        endpoint->txComplete();
+        target::USB.DEVICE.EPINTFLAG[e].reg.setTRCPT(1, true);
+      }
+
+      if (target::USB.DEVICE.EPINTFLAG[e].reg.getRXSTP()) {
+        target::USB.DEVICE.EPINTFLAG[e].reg.setRXSTP(true);
+        endpoint->setup((SetupData *)endpoint->rxBufferPtr);
+        epDescriptors[e][0].PCKSIZE.BYTE_COUNT = 0;
+        target::USB.DEVICE.EPSTATUSCLR[e].reg.setBK_RDY(0, true);
       }
     }
   }
@@ -166,8 +164,14 @@ public:
   }
 
   void stall(int epIndex) { target::USB.DEVICE.EPSTATUSSET[epIndex].reg.setSTALLRQ(1, true); }
-
-  void setAddress(int address) { addressToSet = address; };
 };
 
 } // namespace atsamd::usbd
+
+/*
+          if (addressToSet && !e) {
+            target::USB.DEVICE.DADD = 0x80 | addressToSet;
+            addressToSet = 0;
+          }
+
+*/

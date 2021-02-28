@@ -11,8 +11,8 @@ const int DEVICE_REQUEST_GET_DESCRIPTOR = 0x06;
 const int DEVICE_REQUEST_GET_CONFIGURATION = 0x08;
 const int DEVICE_REQUEST_SET_CONFIGURATION = 0x09;
 
-const int DESCRIPTOR_TYPE_DEVICE = 1;
-const int DESCRIPTOR_TYPE_CONFIGURATION = 2;
+const int DESCRIPTOR_TYPE_DEVICE = 0x01;
+const int DESCRIPTOR_TYPE_CONFIGURATION = 0x02;
 const int DESCRIPTOR_TYPE_INTERFACE = 0x04;
 const int DESCRIPTOR_TYPE_ENDPOINT = 0x05;
 
@@ -123,6 +123,8 @@ public:
   virtual void checkDescriptor(EndpointDescriptor *deviceDesriptor){};
   void startTx(int length);
   void stall();
+  virtual void rxComplete(){};
+  virtual void txComplete(){};
 };
 
 class UsbInterface {
@@ -138,11 +140,13 @@ public:
     }
   }
 
-  virtual void setup(SetupData *setupData) {};
+  virtual void setup(SetupData *setupData){};
   virtual void checkDescriptor(InterfaceDescriptor *deviceDesriptor){};
 };
 
 class UsbControlEndpoint : public UsbEndpoint {
+  int addressToSet;
+
 public:
   unsigned char rxBuffer[64];
   unsigned char txBuffer[64];
@@ -157,6 +161,8 @@ public:
     txBufferSize = sizeof(txBuffer);
     UsbEndpoint::init();
   }
+
+  void txComplete();
 };
 
 class UsbDevice {
@@ -193,13 +199,22 @@ public:
 
   virtual void startTx(int epIndex, int length) = 0;
   virtual void stall(int epIndex) = 0;
-  virtual void setAddress(int address) = 0;
 
   virtual void checkDescriptor(DeviceDescriptor *deviceDesriptor){};
+
+  virtual void setAddress(int address) = 0;
 };
 
 void UsbEndpoint::startTx(int length) { device->startTx(index, length); }
 void UsbEndpoint::stall() { device->stall(index); }
+
+
+void UsbControlEndpoint::txComplete() {
+  if (addressToSet) {
+    device->setAddress(addressToSet);
+    addressToSet = 0;
+  }
+}
 
 void UsbControlEndpoint::setup(SetupData *setupData) {
 
@@ -291,7 +306,7 @@ void UsbControlEndpoint::setup(SetupData *setupData) {
 
     } else if (setupData->bRequest == DEVICE_REQUEST_SET_ADDRESS) {
 
-      device->setAddress(setupData->wValue);
+      addressToSet = setupData->wValue;
       startTx(0);
 
     } else if (setupData->bRequest == DEVICE_REQUEST_GET_CONFIGURATION) {
@@ -300,27 +315,26 @@ void UsbControlEndpoint::setup(SetupData *setupData) {
       startTx(1);
 
     } else if (setupData->bRequest == DEVICE_REQUEST_SET_CONFIGURATION) {
-      
+
       startTx(0);
 
     } else if (setupData->bRequest == DEVICE_REQUEST_GET_STATUS) {
-      
+
       txBuffer[0] = 0;
       txBuffer[1] = 0;
       startTx(2);
-
-    } 
+    }
 
   } else if (setupData->bmRequestType.recipient == INTERFACE) {
-    UsbInterface* interface = device->interfaces[setupData->wIndex];
+    UsbInterface *interface = device->interfaces[setupData->wIndex];
     if (interface) {
       interface->setup(setupData);
     }
   } else if (setupData->bmRequestType.recipient == ENDPOINT) {
-    UsbEndpoint* endpoint = device->endpoints[setupData->wIndex & 0x0F];
+    UsbEndpoint *endpoint = device->endpoints[setupData->wIndex & 0x0F];
     if (endpoint && endpoint != this) {
       endpoint->setup(setupData);
-    }    
+    }
   }
 }
 
