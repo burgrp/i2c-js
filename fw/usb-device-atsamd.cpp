@@ -143,7 +143,7 @@ public:
 
         if (target::USB.DEVICE.EPINTFLAG[e].reg.getTRCPT(1)) {
           target::USB.DEVICE.EPINTFLAG[e].reg.setTRCPT(1, true);
-          if (addressToSet) {
+          if (addressToSet&& !e) {
             target::USB.DEVICE.DADD = 0x80 | addressToSet;
             addressToSet = 0;
           }
