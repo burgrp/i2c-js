@@ -257,7 +257,7 @@ void UsbControlEndpoint::setup(SetupData *setupData) {
               endpointDescriptor->bmAttributes.usageType = DATA;
               endpointDescriptor->wMaxPacketSize = bufferSize;
               endpointDescriptor->bInterval =
-                  endpoint->transferType == ISOCHRONOUS ? 1 : transferType == INTERRUPT ? 10 : 0;
+                  endpoint->transferType == ISOCHRONOUS ? 1 : 10;
 
               endpoint->checkDescriptor(endpointDescriptor);
               totalLength += sizeof(EndpointDescriptor);

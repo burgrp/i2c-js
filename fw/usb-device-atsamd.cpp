@@ -143,7 +143,7 @@ public:
 
         if (target::USB.DEVICE.EPINTFLAG[e].reg.getTRCPT(1)) {
           target::USB.DEVICE.EPINTFLAG[e].reg.setTRCPT(1, true);
-          if (addressToSet&& !e) {
+          if (addressToSet && !e) {
             target::USB.DEVICE.DADD = 0x80 | addressToSet;
             addressToSet = 0;
           }
@@ -152,7 +152,7 @@ public:
         if (target::USB.DEVICE.EPINTFLAG[e].reg.getRXSTP()) {
           target::USB.DEVICE.EPINTFLAG[e].reg.setRXSTP(true);
           endpoint->setup((SetupData *)endpoint->rxBufferPtr);
-          target::USB.DEVICE.EPSTATUSCLR[e].reg.setBK_RDY(0, true);
+          target::USB.DEVICE.EPSTATUSCLR[e].reg.setBK_RDY(e, true);
         }
       }
     }
