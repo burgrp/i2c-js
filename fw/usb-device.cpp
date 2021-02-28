@@ -5,6 +5,7 @@ namespace usbd {
 const int MAX_ENDPOINTS = 8;
 const int MAX_INTERFACES = 8;
 
+const int DEVICE_REQUEST_GET_STATUS = 0x00;
 const int DEVICE_REQUEST_SET_ADDRESS = 0x05;
 const int DEVICE_REQUEST_GET_DESCRIPTOR = 0x06;
 const int DEVICE_REQUEST_GET_CONFIGURATION = 0x08;
@@ -15,16 +16,20 @@ const int DESCRIPTOR_TYPE_CONFIGURATION = 2;
 const int DESCRIPTOR_TYPE_INTERFACE = 0x04;
 const int DESCRIPTOR_TYPE_ENDPOINT = 0x05;
 
-enum TransferType { CONTROL = 0, ISOCHRONOUS = 1, BULK = 2, INTERRUPT = 3 };
-enum SynchronizationType { NO_SYNCHRONIZATION = 0, ASYNCHRONOUS = 1, ADAPTIVE = 2, SYNCHRONOUS = 3 };
-enum UsageType { DATA = 0, FEEDBACK = 1, IMPLICIT_FEEDBACK = 2 };
-
 class UsbDevice;
 class UsbInterface;
 class UsbEndpoint;
 
-struct SetupData {
-  unsigned char bmRequestType;
+enum RequestRecipient { DEVICE = 0, INTERFACE = 1, ENDPOINT = 2, OTHER = 3 };
+enum RequestType { STANDARD = 0, CLASS = 1, VENDOR = 2 };
+enum RequestDirection { OUT = 0, IN = 1 };
+
+struct __attribute__((packed)) SetupData {
+  struct {
+    RequestRecipient recipient : 5;
+    RequestType type : 2;
+    RequestDirection direction : 1;
+  } bmRequestType;
   unsigned char bRequest;
   unsigned short wValue;
   unsigned short wIndex;
@@ -76,6 +81,10 @@ struct __attribute__((packed)) InterfaceDescriptor {
   unsigned char iInterface;         // Index to string describing this interface
 };
 
+enum EndpointTransferType { CONTROL = 0, ISOCHRONOUS = 1, BULK = 2, INTERRUPT = 3 };
+enum EndpointSynchronizationType { NO_SYNCHRONIZATION = 0, ASYNCHRONOUS = 1, ADAPTIVE = 2, SYNCHRONOUS = 3 };
+enum EndpointUsageType { DATA = 0, FEEDBACK = 1, IMPLICIT_FEEDBACK = 2 };
+
 struct __attribute__((packed)) EndpointDescriptor {
   unsigned char bLength;         // Length of this descriptor = 7 bytes
   unsigned char bDescriptorType; // Descriptor type = ENDPOINT (05h)
@@ -85,9 +94,9 @@ struct __attribute__((packed)) EndpointDescriptor {
     unsigned char direction : 1; // Direction. Ignored for Control, 0 = OUT endpoint, 1 = IN endpoint
   } bEndpointAddress;
   struct {
-    TransferType transferType : 2;
-    SynchronizationType synchronizationType : 2;
-    UsageType usageType : 2;
+    EndpointTransferType transferType : 2;
+    EndpointSynchronizationType synchronizationType : 2;
+    EndpointUsageType usageType : 2;
     unsigned char : 2;
   } bmAttributes;
   unsigned short wMaxPacketSize; // Maximum packet size for this endpoint
@@ -98,7 +107,7 @@ class UsbEndpoint {
 public:
   UsbInterface *interface;
   UsbDevice *device;
-  TransferType transferType = INTERRUPT;
+  EndpointTransferType transferType = INTERRUPT;
   unsigned char *rxBufferPtr;
   unsigned int rxBufferSize;
   unsigned int rxPacketSize;
@@ -107,8 +116,8 @@ public:
   unsigned int txPacketSize;
   unsigned int index;
   virtual void init() {
-    rxPacketSize = rxBufferSize > 64? 64: rxBufferSize;
-    txPacketSize = txBufferSize > 64? 64: txBufferSize;
+    rxPacketSize = rxBufferSize > 64 ? 64 : rxBufferSize;
+    txPacketSize = txBufferSize > 64 ? 64 : txBufferSize;
   }
   virtual void setup(SetupData *setupData) {}
   virtual void checkDescriptor(EndpointDescriptor *deviceDesriptor){};
@@ -129,6 +138,7 @@ public:
     }
   }
 
+  virtual void setup(SetupData *setupData) {};
   virtual void checkDescriptor(InterfaceDescriptor *deviceDesriptor){};
 };
 
@@ -193,107 +203,124 @@ void UsbEndpoint::stall() { device->stall(index); }
 
 void UsbControlEndpoint::setup(SetupData *setupData) {
 
-  if (setupData->bRequest == DEVICE_REQUEST_GET_DESCRIPTOR) {
+  if (setupData->bmRequestType.recipient == DEVICE) {
 
-    int descriptorType = setupData->wValue >> 8;
-    int descriptorIndex = setupData->wValue & 0xFF;
+    if (setupData->bRequest == DEVICE_REQUEST_GET_DESCRIPTOR) {
 
-    if (descriptorType == DESCRIPTOR_TYPE_DEVICE) {
+      int descriptorType = setupData->wValue >> 8;
+      int descriptorIndex = setupData->wValue & 0xFF;
 
-      DeviceDescriptor *deviceDesriptor = (DeviceDescriptor *)txBufferPtr;
-      memset(deviceDesriptor, 0, sizeof(DeviceDescriptor));
+      if (descriptorType == DESCRIPTOR_TYPE_DEVICE) {
 
-      deviceDesriptor->bLength = sizeof(DeviceDescriptor);
-      deviceDesriptor->bDescriptorType = DESCRIPTOR_TYPE_DEVICE;
-      deviceDesriptor->bcdUSB = 0x200;
-      deviceDesriptor->bMaxPacketSize0 = rxPacketSize;
-      deviceDesriptor->bNumConfigurations = 1;
+        DeviceDescriptor *deviceDesriptor = (DeviceDescriptor *)txBufferPtr;
+        memset(deviceDesriptor, 0, sizeof(DeviceDescriptor));
 
-      device->checkDescriptor(deviceDesriptor);
+        deviceDesriptor->bLength = sizeof(DeviceDescriptor);
+        deviceDesriptor->bDescriptorType = DESCRIPTOR_TYPE_DEVICE;
+        deviceDesriptor->bcdUSB = 0x200;
+        deviceDesriptor->bMaxPacketSize0 = rxPacketSize;
+        deviceDesriptor->bNumConfigurations = 1;
 
-      startTx(sizeof(DeviceDescriptor));
+        device->checkDescriptor(deviceDesriptor);
 
-    } else if (descriptorType == DESCRIPTOR_TYPE_CONFIGURATION) {
+        startTx(sizeof(DeviceDescriptor));
 
-      int totalLength = 0;
+      } else if (descriptorType == DESCRIPTOR_TYPE_CONFIGURATION) {
 
-      ConfigurationDescriptor *configurationDescriptor = (ConfigurationDescriptor *)(txBuffer + totalLength);
-      memset(configurationDescriptor, 0, sizeof(ConfigurationDescriptor));
-      configurationDescriptor->bLength = sizeof(ConfigurationDescriptor);
-      configurationDescriptor->bDescriptorType = DESCRIPTOR_TYPE_CONFIGURATION;
-      configurationDescriptor->bConfigurationValue = 1;
-      configurationDescriptor->bmAttributes.reservedSetTo1 = 1;
-      configurationDescriptor->bMaxPower = 50;
+        int totalLength = 0;
 
-      totalLength += sizeof(ConfigurationDescriptor);
+        ConfigurationDescriptor *configurationDescriptor = (ConfigurationDescriptor *)(txBuffer + totalLength);
+        memset(configurationDescriptor, 0, sizeof(ConfigurationDescriptor));
+        configurationDescriptor->bLength = sizeof(ConfigurationDescriptor);
+        configurationDescriptor->bDescriptorType = DESCRIPTOR_TYPE_CONFIGURATION;
+        configurationDescriptor->bConfigurationValue = 1;
+        configurationDescriptor->bmAttributes.reservedSetTo1 = 1;
+        configurationDescriptor->bMaxPower = 50;
 
-      for (int i = 0; device->interfaces[i]; i++) {
+        totalLength += sizeof(ConfigurationDescriptor);
 
-        UsbInterface *interface = device->interfaces[i];
-        configurationDescriptor->bNumInterfaces++;
+        for (int i = 0; device->interfaces[i]; i++) {
 
-        InterfaceDescriptor *interfaceDescriptor = (InterfaceDescriptor *)(txBuffer + totalLength);
-        memset(interfaceDescriptor, 0, sizeof(InterfaceDescriptor));
-        interfaceDescriptor->bLength = sizeof(InterfaceDescriptor);
-        interfaceDescriptor->bDescriptorType = DESCRIPTOR_TYPE_INTERFACE;
-        interfaceDescriptor->bInterfaceNumber = i;
+          UsbInterface *interface = device->interfaces[i];
+          configurationDescriptor->bNumInterfaces++;
 
-        interface->checkDescriptor(interfaceDescriptor);
-        totalLength += sizeof(InterfaceDescriptor);
+          InterfaceDescriptor *interfaceDescriptor = (InterfaceDescriptor *)(txBuffer + totalLength);
+          memset(interfaceDescriptor, 0, sizeof(InterfaceDescriptor));
+          interfaceDescriptor->bLength = sizeof(InterfaceDescriptor);
+          interfaceDescriptor->bDescriptorType = DESCRIPTOR_TYPE_INTERFACE;
+          interfaceDescriptor->bInterfaceNumber = i;
 
-        for (int e = 0; interface->endpoints[e]; e++) {
-          UsbEndpoint *endpoint = interface->endpoints[e];
-          for (int direction = 0; direction <= 1; direction++) {
+          interface->checkDescriptor(interfaceDescriptor);
+          totalLength += sizeof(InterfaceDescriptor);
 
-            int packetSize = direction ? endpoint->txPacketSize : endpoint->rxPacketSize;
+          for (int e = 0; interface->endpoints[e]; e++) {
+            UsbEndpoint *endpoint = interface->endpoints[e];
+            for (int direction = 0; direction <= 1; direction++) {
 
-            if (packetSize) {
+              int packetSize = direction ? endpoint->txPacketSize : endpoint->rxPacketSize;
 
-              interfaceDescriptor->bNumEndpoints++;
+              if (packetSize) {
 
-              EndpointDescriptor *endpointDescriptor = (EndpointDescriptor *)(txBuffer + totalLength);
-              memset(endpointDescriptor, 0, sizeof(EndpointDescriptor));
-              endpointDescriptor->bLength = sizeof(EndpointDescriptor);
-              endpointDescriptor->bDescriptorType = DESCRIPTOR_TYPE_ENDPOINT;
-              endpointDescriptor->bEndpointAddress.direction = direction;
-              endpointDescriptor->bEndpointAddress.index = endpoint->index;
-              endpointDescriptor->bmAttributes.transferType = endpoint->transferType;
-              endpointDescriptor->bmAttributes.synchronizationType = NO_SYNCHRONIZATION;
-              endpointDescriptor->bmAttributes.usageType = DATA;
-              endpointDescriptor->wMaxPacketSize = packetSize;
-              endpointDescriptor->bInterval =
-                  endpoint->transferType == ISOCHRONOUS ? 1 : 10;
+                interfaceDescriptor->bNumEndpoints++;
 
-              endpoint->checkDescriptor(endpointDescriptor);
-              totalLength += sizeof(EndpointDescriptor);
+                EndpointDescriptor *endpointDescriptor = (EndpointDescriptor *)(txBuffer + totalLength);
+                memset(endpointDescriptor, 0, sizeof(EndpointDescriptor));
+                endpointDescriptor->bLength = sizeof(EndpointDescriptor);
+                endpointDescriptor->bDescriptorType = DESCRIPTOR_TYPE_ENDPOINT;
+                endpointDescriptor->bEndpointAddress.direction = direction;
+                endpointDescriptor->bEndpointAddress.index = endpoint->index;
+                endpointDescriptor->bmAttributes.transferType = endpoint->transferType;
+                endpointDescriptor->bmAttributes.synchronizationType = NO_SYNCHRONIZATION;
+                endpointDescriptor->bmAttributes.usageType = DATA;
+                endpointDescriptor->wMaxPacketSize = packetSize;
+                endpointDescriptor->bInterval = endpoint->transferType == ISOCHRONOUS ? 1 : 10;
+
+                endpoint->checkDescriptor(endpointDescriptor);
+                totalLength += sizeof(EndpointDescriptor);
+              }
             }
           }
         }
+
+        configurationDescriptor->wTotalLength = totalLength;
+        startTx(setupData->wLength < totalLength ? setupData->wLength : totalLength);
+
+      } else {
+        startTx(0);
       }
 
-      configurationDescriptor->wTotalLength = totalLength;
-      startTx(setupData->wLength < totalLength ? setupData->wLength : totalLength);
+    } else if (setupData->bRequest == DEVICE_REQUEST_SET_ADDRESS) {
 
-    } else {
-      stall();
+      device->setAddress(setupData->wValue);
+      startTx(0);
+
+    } else if (setupData->bRequest == DEVICE_REQUEST_GET_CONFIGURATION) {
+
+      txBuffer[0] = 1;
+      startTx(1);
+
+    } else if (setupData->bRequest == DEVICE_REQUEST_SET_CONFIGURATION) {
+      
+      startTx(0);
+
+    } else if (setupData->bRequest == DEVICE_REQUEST_GET_STATUS) {
+      
+      txBuffer[0] = 0;
+      txBuffer[1] = 0;
+      startTx(2);
+
+    } 
+
+  } else if (setupData->bmRequestType.recipient == INTERFACE) {
+    UsbInterface* interface = device->interfaces[setupData->wIndex];
+    if (interface) {
+      interface->setup(setupData);
     }
-
-  } else if (setupData->bRequest == DEVICE_REQUEST_SET_ADDRESS) {
-
-    device->setAddress(setupData->wValue);
-    startTx(0);
-
-  } else if (setupData->bRequest == DEVICE_REQUEST_GET_CONFIGURATION) {
-
-    txBuffer[0] = 1;
-    startTx(1);
-
-  } else if (setupData->bRequest == DEVICE_REQUEST_SET_CONFIGURATION) {
-
-    startTx(0);
-
-  } else {
-    stall();
+  } else if (setupData->bmRequestType.recipient == ENDPOINT) {
+    UsbEndpoint* endpoint = device->endpoints[setupData->wIndex & 0x0F];
+    if (endpoint && endpoint != this) {
+      endpoint->setup(setupData);
+    }    
   }
 }
 

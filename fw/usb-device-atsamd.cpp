@@ -104,7 +104,7 @@ public:
         if (endpoint && data && size) {
           target::USB.DEVICE.EPCFG[e].reg.setEPTYPE(bank, 1 + endpoint->transferType);
           epDescriptors[e][bank].ADDR = data;
-          epDescriptors[e][bank].PCKSIZE.SIZE = 
+          epDescriptors[e][bank].PCKSIZE.SIZE =
               size == 0
                   ? 0
                   : size == 16
@@ -142,7 +142,7 @@ public:
       if (endpoint) {
 
         if (target::USB.DEVICE.EPINTFLAG[e].reg.getTRCPT(1)) {
-          target::USB.DEVICE.EPINTFLAG[e].reg.setTRCPT(1, true);
+          target::USB.DEVICE.EPINTFLAG[e].reg.setTRCPT(1, true);          
           if (addressToSet && !e) {
             target::USB.DEVICE.DADD = 0x80 | addressToSet;
             addressToSet = 0;
