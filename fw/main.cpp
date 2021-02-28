@@ -32,8 +32,10 @@ public:
 class TestInterface : public usbd::UsbInterface {
   public:
   TestEndpoint testEndpoint;
+  //TestEndpoint testEndpoint2;
   void init() {
     endpoints[0] = &testEndpoint;
+    //endpoints[1] = &testEndpoint2;
     usbd::UsbInterface::init();
   }
 };
