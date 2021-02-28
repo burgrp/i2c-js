@@ -141,6 +141,8 @@ public:
       if (target::USB.DEVICE.EPINTFLAG[e].reg.getTRCPT(0)) {
         endpoint->rxComplete();
         target::USB.DEVICE.EPINTFLAG[e].reg.setTRCPT(0, true);
+        epDescriptors[e][0].PCKSIZE.BYTE_COUNT = 0;
+        target::USB.DEVICE.EPSTATUSCLR[e].reg.setBK_RDY(0, true);
       }
 
       if (target::USB.DEVICE.EPINTFLAG[e].reg.getTRCPT(1)) {
@@ -149,8 +151,8 @@ public:
       }
 
       if (target::USB.DEVICE.EPINTFLAG[e].reg.getRXSTP()) {
+        endpoint->setup((SetupData *)endpoint->rxBufferPtr);        
         target::USB.DEVICE.EPINTFLAG[e].reg.setRXSTP(true);
-        endpoint->setup((SetupData *)endpoint->rxBufferPtr);
         epDescriptors[e][0].PCKSIZE.BYTE_COUNT = 0;
         target::USB.DEVICE.EPSTATUSCLR[e].reg.setBK_RDY(0, true);
       }
@@ -168,10 +170,3 @@ public:
 
 } // namespace atsamd::usbd
 
-/*
-          if (addressToSet && !e) {
-            target::USB.DEVICE.DADD = 0x80 | addressToSet;
-            addressToSet = 0;
-          }
-
-*/

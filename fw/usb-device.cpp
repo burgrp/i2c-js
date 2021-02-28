@@ -13,6 +13,7 @@ const int DEVICE_REQUEST_SET_CONFIGURATION = 0x09;
 
 const int DESCRIPTOR_TYPE_DEVICE = 0x01;
 const int DESCRIPTOR_TYPE_CONFIGURATION = 0x02;
+const int DESCRIPTOR_TYPE_STRING = 0x03;
 const int DESCRIPTOR_TYPE_INTERFACE = 0x04;
 const int DESCRIPTOR_TYPE_ENDPOINT = 0x05;
 
@@ -38,7 +39,7 @@ struct __attribute__((packed)) SetupData {
 
 struct __attribute__((packed)) DeviceDescriptor {
   unsigned char bLength;            // Length of this descriptor = 18 bytes
-  unsigned char bDescriptorType;    // Descriptor type = DEVICE (01h)
+  unsigned char bDescriptorType;    // Descriptor type
   unsigned short bcdUSB;            // USB specification version (BCD)
   unsigned char bDeviceClass;       // Device class
   unsigned char bDeviceSubClass;    // Device subclass
@@ -55,7 +56,7 @@ struct __attribute__((packed)) DeviceDescriptor {
 
 struct __attribute__((packed)) ConfigurationDescriptor {
   unsigned char bLength;             // Length of this descriptor = 9 bytes
-  unsigned char bDescriptorType;     // Descriptor type = CONFIGURATION (02h)
+  unsigned char bDescriptorType;     // Descriptor type
   unsigned short wTotalLength;       // Total length including interface and endpoint descriptors
   unsigned char bNumInterfaces;      // Number of interfaces in this configuration
   unsigned char bConfigurationValue; // Configuration value used by SET_CONFIGURATION to select this configuration
@@ -71,7 +72,7 @@ struct __attribute__((packed)) ConfigurationDescriptor {
 
 struct __attribute__((packed)) InterfaceDescriptor {
   unsigned char bLength;            // Length of this descriptor = 9 bytes
-  unsigned char bDescriptorType;    // Descriptor type = INTERFACE (04h)
+  unsigned char bDescriptorType;    // Descriptor type
   unsigned char bInterfaceNumber;   // Zero based index of this interface
   unsigned char bAlternateSetting;  // Alternate setting value
   unsigned char bNumEndpoints;      // Number of endpoints used by this interface (not including EP0)
@@ -87,7 +88,7 @@ enum EndpointUsageType { DATA = 0, FEEDBACK = 1, IMPLICIT_FEEDBACK = 2 };
 
 struct __attribute__((packed)) EndpointDescriptor {
   unsigned char bLength;         // Length of this descriptor = 7 bytes
-  unsigned char bDescriptorType; // Descriptor type = ENDPOINT (05h)
+  unsigned char bDescriptorType; // Descriptor type
   struct {
     unsigned char index : 4; // The endpoint number
     unsigned char : 3;
@@ -101,6 +102,12 @@ struct __attribute__((packed)) EndpointDescriptor {
   } bmAttributes;
   unsigned short wMaxPacketSize; // Maximum packet size for this endpoint
   unsigned char bInterval;       // Polling interval in milliseconds for interrupt endpoints
+};
+
+struct __attribute__((packed)) StringDescriptor {
+  unsigned char bLength;         // Length of this descriptor
+  unsigned char bDescriptorType; // Descriptor type
+  unsigned short unicodeData[];
 };
 
 class UsbEndpoint {
@@ -264,6 +271,7 @@ void UsbControlEndpoint::setup(SetupData *setupData) {
           interfaceDescriptor->bLength = sizeof(InterfaceDescriptor);
           interfaceDescriptor->bDescriptorType = DESCRIPTOR_TYPE_INTERFACE;
           interfaceDescriptor->bInterfaceNumber = i;
+          interfaceDescriptor->bInterfaceClass = 0xFF;
 
           interface->checkDescriptor(interfaceDescriptor);
           totalLength += sizeof(InterfaceDescriptor);
@@ -299,7 +307,19 @@ void UsbControlEndpoint::setup(SetupData *setupData) {
 
         configurationDescriptor->wTotalLength = totalLength;
         startTx(setupData->wLength < totalLength ? setupData->wLength : totalLength);
-
+      } else if (descriptorType == DESCRIPTOR_TYPE_STRING) {
+        int index = setupData->wIndex;
+        StringDescriptor *stringDescriptor = (StringDescriptor *)txBuffer;
+        stringDescriptor->bDescriptorType = DESCRIPTOR_TYPE_STRING;
+        stringDescriptor->bLength = 2;
+        if (index == 0) {
+          stringDescriptor->unicodeData[0] = 0x0409;
+          stringDescriptor->bLength += 2;
+        } else {
+          stringDescriptor->unicodeData[0] = 'A';
+          stringDescriptor->bLength += 2;
+        }
+        startTx(stringDescriptor->bLength);
       } else {
         startTx(0);
       }

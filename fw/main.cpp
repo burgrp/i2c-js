@@ -18,8 +18,8 @@ ToggleTimer timer;
 
 class TestEndpoint : public usbd::UsbEndpoint {
 public:
-  unsigned char rxBuffer[16];
-  unsigned char txBuffer[1024];
+  unsigned char rxBuffer[1024];
+  unsigned char txBuffer[8];
   void init() {
     rxBufferPtr = rxBuffer;
     rxBufferSize = sizeof(rxBuffer);
@@ -49,8 +49,10 @@ public:
   }
 
   void checkDescriptor(DeviceDescriptor *deviceDesriptor) {
-    deviceDesriptor->idVendor = 0xAAAA;
-    deviceDesriptor->idProduct = 0xBBBB;
+    deviceDesriptor->idVendor = 0xFEE0;
+    deviceDesriptor->idProduct = 0x0001;
+    deviceDesriptor->iManufacturer = 1;
+    deviceDesriptor->iProduct = 2;
   };
 };
 
