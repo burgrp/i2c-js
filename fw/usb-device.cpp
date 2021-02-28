@@ -1,15 +1,13 @@
-#include <cstring>
-
 namespace usbd {
 
 const int MAX_ENDPOINTS = 8;
 const int MAX_INTERFACES = 8;
 
-const int DEVICE_REQUEST_GET_STATUS = 0x00;
-const int DEVICE_REQUEST_SET_ADDRESS = 0x05;
-const int DEVICE_REQUEST_GET_DESCRIPTOR = 0x06;
-const int DEVICE_REQUEST_GET_CONFIGURATION = 0x08;
-const int DEVICE_REQUEST_SET_CONFIGURATION = 0x09;
+const int STD_REQUEST_GET_STATUS = 0x00;
+const int STD_REQUEST_SET_ADDRESS = 0x05;
+const int STD_REQUEST_GET_DESCRIPTOR = 0x06;
+const int STD_REQUEST_GET_CONFIGURATION = 0x08;
+const int STD_REQUEST_SET_CONFIGURATION = 0x09;
 
 const int DESCRIPTOR_TYPE_DEVICE = 0x01;
 const int DESCRIPTOR_TYPE_CONFIGURATION = 0x02;
@@ -24,6 +22,8 @@ class UsbEndpoint;
 enum RequestRecipient { DEVICE = 0, INTERFACE = 1, ENDPOINT = 2, OTHER = 3 };
 enum RequestType { STANDARD = 0, CLASS = 1, VENDOR = 2 };
 enum RequestDirection { OUT = 0, IN = 1 };
+
+enum StringDescriptorID { MANUFACTURER = 1, PRODUCT = 2, SERIAL = 3, INTERFACE_BASE = 4 };
 
 struct __attribute__((packed)) SetupData {
   struct {
@@ -110,6 +110,12 @@ struct __attribute__((packed)) StringDescriptor {
   unsigned short unicodeData[];
 };
 
+void zeromem(void *mem, int length) {
+  for (int c = 0; c < length; c++) {
+    ((unsigned char*)mem)[c] = 0;
+  }
+}
+
 class UsbEndpoint {
 public:
   UsbInterface *interface;
@@ -149,6 +155,8 @@ public:
 
   virtual void setup(SetupData *setupData){};
   virtual void checkDescriptor(InterfaceDescriptor *deviceDesriptor){};
+
+  virtual const char *getLabel() = 0;
 };
 
 class UsbControlEndpoint : public UsbEndpoint {
@@ -207,14 +215,18 @@ public:
   virtual void startTx(int epIndex, int length) = 0;
   virtual void stall(int epIndex) = 0;
 
+  virtual void setup(SetupData *setupData){};
   virtual void checkDescriptor(DeviceDescriptor *deviceDesriptor){};
 
   virtual void setAddress(int address) = 0;
+
+  virtual const char *getManufacturer() = 0;
+  virtual const char *getProduct() = 0;
+  virtual const char *getSerial() = 0;
 };
 
 void UsbEndpoint::startTx(int length) { device->startTx(index, length); }
 void UsbEndpoint::stall() { device->stall(index); }
-
 
 void UsbControlEndpoint::txComplete() {
   if (addressToSet) {
@@ -227,122 +239,153 @@ void UsbControlEndpoint::setup(SetupData *setupData) {
 
   if (setupData->bmRequestType.recipient == DEVICE) {
 
-    if (setupData->bRequest == DEVICE_REQUEST_GET_DESCRIPTOR) {
+    if (setupData->bmRequestType.type == STANDARD) {
 
-      int descriptorType = setupData->wValue >> 8;
-      int descriptorIndex = setupData->wValue & 0xFF;
+      if (setupData->bRequest == STD_REQUEST_GET_DESCRIPTOR) {
 
-      if (descriptorType == DESCRIPTOR_TYPE_DEVICE) {
+        int descriptorType = setupData->wValue >> 8;
+        int descriptorIndex = setupData->wValue & 0xFF;
 
-        DeviceDescriptor *deviceDesriptor = (DeviceDescriptor *)txBufferPtr;
-        memset(deviceDesriptor, 0, sizeof(DeviceDescriptor));
+        if (descriptorType == DESCRIPTOR_TYPE_DEVICE) {
 
-        deviceDesriptor->bLength = sizeof(DeviceDescriptor);
-        deviceDesriptor->bDescriptorType = DESCRIPTOR_TYPE_DEVICE;
-        deviceDesriptor->bcdUSB = 0x200;
-        deviceDesriptor->bMaxPacketSize0 = rxPacketSize;
-        deviceDesriptor->bNumConfigurations = 1;
+          DeviceDescriptor *deviceDesriptor = (DeviceDescriptor *)txBufferPtr;
+          zeromem(deviceDesriptor, sizeof(DeviceDescriptor));
 
-        device->checkDescriptor(deviceDesriptor);
+          deviceDesriptor->bLength = sizeof(DeviceDescriptor);
+          deviceDesriptor->bDescriptorType = DESCRIPTOR_TYPE_DEVICE;
+          deviceDesriptor->bcdUSB = 0x200;
+          deviceDesriptor->bMaxPacketSize0 = rxPacketSize;
+          deviceDesriptor->iManufacturer = StringDescriptorID::MANUFACTURER;
+          deviceDesriptor->iProduct = StringDescriptorID::PRODUCT;
+          deviceDesriptor->iSerialNumber = StringDescriptorID::SERIAL;
 
-        startTx(sizeof(DeviceDescriptor));
+          deviceDesriptor->bNumConfigurations = 1;
 
-      } else if (descriptorType == DESCRIPTOR_TYPE_CONFIGURATION) {
+          device->checkDescriptor(deviceDesriptor);
 
-        int totalLength = 0;
+          startTx(sizeof(DeviceDescriptor));
 
-        ConfigurationDescriptor *configurationDescriptor = (ConfigurationDescriptor *)(txBuffer + totalLength);
-        memset(configurationDescriptor, 0, sizeof(ConfigurationDescriptor));
-        configurationDescriptor->bLength = sizeof(ConfigurationDescriptor);
-        configurationDescriptor->bDescriptorType = DESCRIPTOR_TYPE_CONFIGURATION;
-        configurationDescriptor->bConfigurationValue = 1;
-        configurationDescriptor->bmAttributes.reservedSetTo1 = 1;
-        configurationDescriptor->bMaxPower = 50;
+        } else if (descriptorType == DESCRIPTOR_TYPE_CONFIGURATION) {
 
-        totalLength += sizeof(ConfigurationDescriptor);
+          int totalLength = 0;
 
-        for (int i = 0; device->interfaces[i]; i++) {
+          ConfigurationDescriptor *configurationDescriptor = (ConfigurationDescriptor *)(txBuffer + totalLength);
+          zeromem(configurationDescriptor, sizeof(ConfigurationDescriptor));
+          configurationDescriptor->bLength = sizeof(ConfigurationDescriptor);
+          configurationDescriptor->bDescriptorType = DESCRIPTOR_TYPE_CONFIGURATION;
+          configurationDescriptor->bConfigurationValue = 1;
+          configurationDescriptor->bmAttributes.reservedSetTo1 = 1;
+          configurationDescriptor->bMaxPower = 50;
 
-          UsbInterface *interface = device->interfaces[i];
-          configurationDescriptor->bNumInterfaces++;
+          totalLength += sizeof(ConfigurationDescriptor);
 
-          InterfaceDescriptor *interfaceDescriptor = (InterfaceDescriptor *)(txBuffer + totalLength);
-          memset(interfaceDescriptor, 0, sizeof(InterfaceDescriptor));
-          interfaceDescriptor->bLength = sizeof(InterfaceDescriptor);
-          interfaceDescriptor->bDescriptorType = DESCRIPTOR_TYPE_INTERFACE;
-          interfaceDescriptor->bInterfaceNumber = i;
-          interfaceDescriptor->bInterfaceClass = 0xFF;
+          for (int i = 0; device->interfaces[i]; i++) {
 
-          interface->checkDescriptor(interfaceDescriptor);
-          totalLength += sizeof(InterfaceDescriptor);
+            UsbInterface *interface = device->interfaces[i];
+            configurationDescriptor->bNumInterfaces++;
 
-          for (int e = 0; interface->endpoints[e]; e++) {
-            UsbEndpoint *endpoint = interface->endpoints[e];
-            for (int direction = 0; direction <= 1; direction++) {
+            InterfaceDescriptor *interfaceDescriptor = (InterfaceDescriptor *)(txBuffer + totalLength);
+            zeromem(interfaceDescriptor, sizeof(InterfaceDescriptor));
+            interfaceDescriptor->bLength = sizeof(InterfaceDescriptor);
+            interfaceDescriptor->bDescriptorType = DESCRIPTOR_TYPE_INTERFACE;
+            interfaceDescriptor->bInterfaceNumber = i;
+            interfaceDescriptor->bInterfaceClass = 0xFF;
+            interfaceDescriptor->iInterface = StringDescriptorID::INTERFACE_BASE + i;
 
-              int packetSize = direction ? endpoint->txPacketSize : endpoint->rxPacketSize;
+            interface->checkDescriptor(interfaceDescriptor);
+            totalLength += sizeof(InterfaceDescriptor);
 
-              if (packetSize) {
+            for (int e = 0; interface->endpoints[e]; e++) {
+              UsbEndpoint *endpoint = interface->endpoints[e];
+              for (int direction = 0; direction <= 1; direction++) {
 
-                interfaceDescriptor->bNumEndpoints++;
+                int packetSize = direction ? endpoint->txPacketSize : endpoint->rxPacketSize;
 
-                EndpointDescriptor *endpointDescriptor = (EndpointDescriptor *)(txBuffer + totalLength);
-                memset(endpointDescriptor, 0, sizeof(EndpointDescriptor));
-                endpointDescriptor->bLength = sizeof(EndpointDescriptor);
-                endpointDescriptor->bDescriptorType = DESCRIPTOR_TYPE_ENDPOINT;
-                endpointDescriptor->bEndpointAddress.direction = direction;
-                endpointDescriptor->bEndpointAddress.index = endpoint->index;
-                endpointDescriptor->bmAttributes.transferType = endpoint->transferType;
-                endpointDescriptor->bmAttributes.synchronizationType = NO_SYNCHRONIZATION;
-                endpointDescriptor->bmAttributes.usageType = DATA;
-                endpointDescriptor->wMaxPacketSize = packetSize;
-                endpointDescriptor->bInterval = endpoint->transferType == ISOCHRONOUS ? 1 : 10;
+                if (packetSize) {
 
-                endpoint->checkDescriptor(endpointDescriptor);
-                totalLength += sizeof(EndpointDescriptor);
+                  interfaceDescriptor->bNumEndpoints++;
+
+                  EndpointDescriptor *endpointDescriptor = (EndpointDescriptor *)(txBuffer + totalLength);
+                  zeromem(endpointDescriptor, sizeof(EndpointDescriptor));
+                  endpointDescriptor->bLength = sizeof(EndpointDescriptor);
+                  endpointDescriptor->bDescriptorType = DESCRIPTOR_TYPE_ENDPOINT;
+                  endpointDescriptor->bEndpointAddress.direction = direction;
+                  endpointDescriptor->bEndpointAddress.index = endpoint->index;
+                  endpointDescriptor->bmAttributes.transferType = endpoint->transferType;
+                  endpointDescriptor->bmAttributes.synchronizationType = NO_SYNCHRONIZATION;
+                  endpointDescriptor->bmAttributes.usageType = DATA;
+                  endpointDescriptor->wMaxPacketSize = packetSize;
+                  endpointDescriptor->bInterval = endpoint->transferType == ISOCHRONOUS ? 1 : 10;
+
+                  endpoint->checkDescriptor(endpointDescriptor);
+                  totalLength += sizeof(EndpointDescriptor);
+                }
               }
             }
           }
+
+          configurationDescriptor->wTotalLength = totalLength;
+          startTx(setupData->wLength < totalLength ? setupData->wLength : totalLength);
+
+        } else if (descriptorType == DESCRIPTOR_TYPE_STRING) {
+
+          StringDescriptor *stringDescriptor = (StringDescriptor *)txBuffer;
+          stringDescriptor->bDescriptorType = DESCRIPTOR_TYPE_STRING;
+          stringDescriptor->bLength = 2;
+
+          if (descriptorIndex == 0) {
+
+            stringDescriptor->unicodeData[0] = 0x0409;
+            stringDescriptor->bLength += 2;
+
+          } else {
+
+            const char *str =
+                descriptorIndex == StringDescriptorID::MANUFACTURER
+                    ? device->getManufacturer()
+                    : descriptorIndex == StringDescriptorID::PRODUCT
+                          ? device->getProduct()
+                          : descriptorIndex == StringDescriptorID::SERIAL
+                                ? device->getSerial()
+                                : descriptorIndex >= StringDescriptorID::INTERFACE_BASE &&
+                                          device->interfaces[descriptorIndex - StringDescriptorID::INTERFACE_BASE]
+                                      ? device->interfaces[descriptorIndex - StringDescriptorID::INTERFACE_BASE]
+                                            ->getLabel()
+                                      : "";
+            for (int c = 0; str[c]; c++) {
+              stringDescriptor->unicodeData[c] = str[c];
+              stringDescriptor->bLength += 2;
+            }
+          }
+          startTx(stringDescriptor->bLength);
+
+        } else {
+          startTx(0);
         }
 
-        configurationDescriptor->wTotalLength = totalLength;
-        startTx(setupData->wLength < totalLength ? setupData->wLength : totalLength);
-      } else if (descriptorType == DESCRIPTOR_TYPE_STRING) {
-        int index = setupData->wIndex;
-        StringDescriptor *stringDescriptor = (StringDescriptor *)txBuffer;
-        stringDescriptor->bDescriptorType = DESCRIPTOR_TYPE_STRING;
-        stringDescriptor->bLength = 2;
-        if (index == 0) {
-          stringDescriptor->unicodeData[0] = 0x0409;
-          stringDescriptor->bLength += 2;
-        } else {
-          stringDescriptor->unicodeData[0] = 'A';
-          stringDescriptor->bLength += 2;
-        }
-        startTx(stringDescriptor->bLength);
-      } else {
+      } else if (setupData->bRequest == STD_REQUEST_SET_ADDRESS) {
+
+        addressToSet = setupData->wValue;
         startTx(0);
+
+      } else if (setupData->bRequest == STD_REQUEST_GET_CONFIGURATION) {
+
+        txBuffer[0] = 1;
+        startTx(1);
+
+      } else if (setupData->bRequest == STD_REQUEST_SET_CONFIGURATION) {
+
+        startTx(0);
+
+      } else if (setupData->bRequest == STD_REQUEST_GET_STATUS) {
+
+        txBuffer[0] = 0;
+        txBuffer[1] = 0;
+        startTx(2);
       }
 
-    } else if (setupData->bRequest == DEVICE_REQUEST_SET_ADDRESS) {
-
-      addressToSet = setupData->wValue;
-      startTx(0);
-
-    } else if (setupData->bRequest == DEVICE_REQUEST_GET_CONFIGURATION) {
-
-      txBuffer[0] = 1;
-      startTx(1);
-
-    } else if (setupData->bRequest == DEVICE_REQUEST_SET_CONFIGURATION) {
-
-      startTx(0);
-
-    } else if (setupData->bRequest == DEVICE_REQUEST_GET_STATUS) {
-
-      txBuffer[0] = 0;
-      txBuffer[1] = 0;
-      startTx(2);
+    } else {
+      device->setup(setupData);
     }
 
   } else if (setupData->bmRequestType.recipient == INTERFACE) {

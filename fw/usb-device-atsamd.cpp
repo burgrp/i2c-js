@@ -2,6 +2,8 @@ using namespace usbd;
 
 namespace atsamd::usbd {
 
+const int SERIAL_NUMBER_LENGTH = 16;
+
 class AtSamdUsbDevice : public UsbDevice {
 
   struct {
@@ -23,7 +25,24 @@ class AtSamdUsbDevice : public UsbDevice {
   } epDescriptors[8][2];
 
 public:
+
+  unsigned char serialNumber[SERIAL_NUMBER_LENGTH + 1];
+
   void init() {
+
+    // calculate serial number
+
+    unsigned int snWordAddresses[4] = {
+      0x0080A00C,0x0080A040,0x0080A044,0x0080A048
+    };
+
+    for (int i = 0; i < SERIAL_NUMBER_LENGTH; i++) {
+      unsigned int word = *(unsigned int*)(snWordAddresses[i >> 2]);
+      unsigned char byte = word >> (i & 3);
+      unsigned char v = (byte >> 4) + (byte & 0xF);      
+      serialNumber[i] = v < 10? v + '0': v - 10 + 'A';
+    }
+    serialNumber[sizeof(serialNumber) - 1] = 0;
 
     UsbDevice::init();
 
@@ -151,7 +170,7 @@ public:
       }
 
       if (target::USB.DEVICE.EPINTFLAG[e].reg.getRXSTP()) {
-        endpoint->setup((SetupData *)endpoint->rxBufferPtr);        
+        endpoint->setup((SetupData *)endpoint->rxBufferPtr);
         target::USB.DEVICE.EPINTFLAG[e].reg.setRXSTP(true);
         epDescriptors[e][0].PCKSIZE.BYTE_COUNT = 0;
         target::USB.DEVICE.EPSTATUSCLR[e].reg.setBK_RDY(0, true);
@@ -166,7 +185,10 @@ public:
   }
 
   void stall(int epIndex) { target::USB.DEVICE.EPSTATUSSET[epIndex].reg.setSTALLRQ(1, true); }
+
+  const char *getSerial() {
+    return (const char *)&serialNumber;
+  }
 };
 
 } // namespace atsamd::usbd
-

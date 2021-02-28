@@ -16,7 +16,7 @@ class ToggleTimer : public genericTimer::Timer {
 
 ToggleTimer timer;
 
-class TestEndpoint : public usbd::UsbEndpoint {
+class CrcEndpoint : public usbd::UsbEndpoint {
 public:
   unsigned char rxBuffer[1024];
   unsigned char txBuffer[8];
@@ -31,13 +31,13 @@ public:
 
 class TestInterface : public usbd::UsbInterface {
 public:
-  TestEndpoint testEndpoint;
-  // TestEndpoint testEndpoint2;
+  CrcEndpoint crcEndpoint;
   void init() {
-    endpoints[0] = &testEndpoint;
-    // endpoints[1] = &testEndpoint2;
+    endpoints[0] = &crcEndpoint;
     usbd::UsbInterface::init();
   }
+
+  const char *getLabel() { return "CRC and LED interface"; }
 };
 
 class TestDevice : public atsamd::usbd::AtSamdUsbDevice {
@@ -51,9 +51,10 @@ public:
   void checkDescriptor(DeviceDescriptor *deviceDesriptor) {
     deviceDesriptor->idVendor = 0xFEE0;
     deviceDesriptor->idProduct = 0x0001;
-    deviceDesriptor->iManufacturer = 1;
-    deviceDesriptor->iProduct = 2;
   };
+
+  const char *getManufacturer() { return "Drake"; }
+  const char *getProduct() { return "Test device"; }
 };
 
 TestDevice testDevice;
