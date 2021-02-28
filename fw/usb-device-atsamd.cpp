@@ -99,12 +99,12 @@ public:
 
       for (int bank = 0; bank <= 1; bank++) {
         unsigned char *data = bank ? endpoint->txBufferPtr : endpoint->rxBufferPtr;
-        int size = bank ? endpoint->txBufferSize : endpoint->rxBufferSize;
+        int size = bank ? endpoint->txPacketSize : endpoint->rxPacketSize;
 
         if (endpoint && data && size) {
           target::USB.DEVICE.EPCFG[e].reg.setEPTYPE(bank, 1 + endpoint->transferType);
           epDescriptors[e][bank].ADDR = data;
-          epDescriptors[e][bank].PCKSIZE.SIZE =
+          epDescriptors[e][bank].PCKSIZE.SIZE = 
               size == 0
                   ? 0
                   : size == 16
@@ -152,7 +152,8 @@ public:
         if (target::USB.DEVICE.EPINTFLAG[e].reg.getRXSTP()) {
           target::USB.DEVICE.EPINTFLAG[e].reg.setRXSTP(true);
           endpoint->setup((SetupData *)endpoint->rxBufferPtr);
-          target::USB.DEVICE.EPSTATUSCLR[e].reg.setBK_RDY(e, true);
+          epDescriptors[e][0].PCKSIZE.BYTE_COUNT = 0;
+          target::USB.DEVICE.EPSTATUSCLR[e].reg.setBK_RDY(0, true);
         }
       }
     }

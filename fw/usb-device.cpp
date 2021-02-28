@@ -101,10 +101,15 @@ public:
   TransferType transferType = INTERRUPT;
   unsigned char *rxBufferPtr;
   unsigned int rxBufferSize;
+  unsigned int rxPacketSize;
   unsigned char *txBufferPtr;
   unsigned int txBufferSize;
+  unsigned int txPacketSize;
   unsigned int index;
-  virtual void init() {}
+  virtual void init() {
+    rxPacketSize = rxBufferSize > 64? 64: rxBufferSize;
+    txPacketSize = txBufferSize > 64? 64: txBufferSize;
+  }
   virtual void setup(SetupData *setupData) {}
   virtual void checkDescriptor(EndpointDescriptor *deviceDesriptor){};
   void startTx(int length);
@@ -201,7 +206,7 @@ void UsbControlEndpoint::setup(SetupData *setupData) {
       deviceDesriptor->bLength = sizeof(DeviceDescriptor);
       deviceDesriptor->bDescriptorType = DESCRIPTOR_TYPE_DEVICE;
       deviceDesriptor->bcdUSB = 0x200;
-      deviceDesriptor->bMaxPacketSize0 = sizeof(rxBuffer);
+      deviceDesriptor->bMaxPacketSize0 = rxPacketSize;
       deviceDesriptor->bNumConfigurations = 1;
 
       device->checkDescriptor(deviceDesriptor);
@@ -240,9 +245,9 @@ void UsbControlEndpoint::setup(SetupData *setupData) {
           UsbEndpoint *endpoint = interface->endpoints[e];
           for (int direction = 0; direction <= 1; direction++) {
 
-            int bufferSize = direction ? endpoint->txBufferSize : endpoint->rxBufferSize;
+            int packetSize = direction ? endpoint->txPacketSize : endpoint->rxPacketSize;
 
-            if (bufferSize) {
+            if (packetSize) {
 
               interfaceDescriptor->bNumEndpoints++;
 
@@ -255,7 +260,7 @@ void UsbControlEndpoint::setup(SetupData *setupData) {
               endpointDescriptor->bmAttributes.transferType = endpoint->transferType;
               endpointDescriptor->bmAttributes.synchronizationType = NO_SYNCHRONIZATION;
               endpointDescriptor->bmAttributes.usageType = DATA;
-              endpointDescriptor->wMaxPacketSize = bufferSize;
+              endpointDescriptor->wMaxPacketSize = packetSize;
               endpointDescriptor->bInterval =
                   endpoint->transferType == ISOCHRONOUS ? 1 : 10;
 

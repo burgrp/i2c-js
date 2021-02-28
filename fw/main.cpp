@@ -19,7 +19,7 @@ ToggleTimer timer;
 class TestEndpoint : public usbd::UsbEndpoint {
 public:
   unsigned char rxBuffer[16];
-  unsigned char txBuffer[64];
+  unsigned char txBuffer[1024];
   void init() {
     rxBufferPtr = rxBuffer;
     rxBufferSize = sizeof(rxBuffer);
