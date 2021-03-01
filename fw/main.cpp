@@ -32,21 +32,21 @@ public:
 class TestInterface : public usbd::UsbInterface {
 public:
   CrcEndpoint crcEndpoint;
-  void init() {
-    endpoints[0] = &crcEndpoint;
-    usbd::UsbInterface::init();
-  }
 
+  virtual UsbEndpoint* getEndpoint(int index) {
+    return index == 0? &crcEndpoint: NULL;
+  }
+  
   const char *getLabel() { return "CRC and LED interface"; }
 };
 
 class TestDevice : public atsamd::usbd::AtSamdUsbDevice {
 public:
   TestInterface testInterface;
-  void init() {
-    interfaces[0] = &testInterface;
-    atsamd::usbd::AtSamdUsbDevice::init();
-  }
+
+  virtual UsbInterface* getInterface(int index) {
+      return index == 0? &testInterface: NULL;
+  };
 
   void checkDescriptor(DeviceDescriptor *deviceDesriptor) {
     deviceDesriptor->idVendor = 0xFEE0;

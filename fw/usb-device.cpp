@@ -1,7 +1,6 @@
 namespace usbd {
 
 const int MAX_ENDPOINTS = 8;
-const int MAX_INTERFACES = 8;
 
 const int STD_REQUEST_GET_STATUS = 0x00;
 const int STD_REQUEST_SET_ADDRESS = 0x05;
@@ -112,7 +111,7 @@ struct __attribute__((packed)) StringDescriptor {
 
 void zeromem(void *mem, int length) {
   for (int c = 0; c < length; c++) {
-    ((unsigned char*)mem)[c] = 0;
+    ((unsigned char *)mem)[c] = 0;
   }
 }
 
@@ -143,15 +142,16 @@ public:
 class UsbInterface {
 public:
   UsbDevice *device;
-  UsbEndpoint *endpoints[MAX_ENDPOINTS + 1];
-
+  
   virtual void init() {
-    for (int c = 0; endpoints[c]; c++) {
-      endpoints[c]->interface = this;
-      endpoints[c]->device = device;
-      endpoints[c]->init();
+    for (int e = 0; UsbEndpoint* endpoint = getEndpoint(e); e++) {
+      endpoint->interface = this;
+      endpoint->device = device;
+      endpoint->init();
     }
   }
+
+  virtual UsbEndpoint *getEndpoint(int index) = 0;
 
   virtual void setup(SetupData *setupData){};
   virtual void checkDescriptor(InterfaceDescriptor *deviceDesriptor){};
@@ -182,8 +182,6 @@ public:
 
 class UsbDevice {
 public:
-  UsbInterface *interfaces[MAX_INTERFACES + 1];
-
   UsbEndpoint *endpoints[MAX_ENDPOINTS];
   int endpointCount;
 
@@ -193,24 +191,24 @@ public:
     controlEndpoint.device = this;
     controlEndpoint.init();
 
-    for (int i = 0; interfaces[i]; i++) {
-      interfaces[i]->device = this;
-      interfaces[i]->init();
+    for (int i = 0; UsbInterface *interface = getInterface(i); i++) {
+      interface->device = this;
+      interface->init();
     }
 
     endpointCount = 0;
     controlEndpoint.index = endpointCount++;
     endpoints[controlEndpoint.index] = &controlEndpoint;
 
-    for (int i = 0; interfaces[i]; i++) {
-      UsbInterface *interface = interfaces[i];
-      for (int e = 0; interface->endpoints[e]; e++) {
-        UsbEndpoint *endpoint = interface->endpoints[e];
+    for (int i = 0; UsbInterface *interface = getInterface(i); i++) {
+      for (int e = 0; UsbEndpoint* endpoint = interface->getEndpoint(e); e++) {
         endpoint->index = endpointCount++;
         endpoints[endpoint->index] = endpoint;
       }
     }
   }
+
+  virtual UsbInterface *getInterface(int index) = 0;
 
   virtual void startTx(int epIndex, int length) = 0;
   virtual void stall(int epIndex) = 0;
@@ -279,9 +277,8 @@ void UsbControlEndpoint::setup(SetupData *setupData) {
 
           totalLength += sizeof(ConfigurationDescriptor);
 
-          for (int i = 0; device->interfaces[i]; i++) {
+          for (int i = 0; UsbInterface *interface = device->getInterface(i); i++) {
 
-            UsbInterface *interface = device->interfaces[i];
             configurationDescriptor->bNumInterfaces++;
 
             InterfaceDescriptor *interfaceDescriptor = (InterfaceDescriptor *)(txBuffer + totalLength);
@@ -295,8 +292,7 @@ void UsbControlEndpoint::setup(SetupData *setupData) {
             interface->checkDescriptor(interfaceDescriptor);
             totalLength += sizeof(InterfaceDescriptor);
 
-            for (int e = 0; interface->endpoints[e]; e++) {
-              UsbEndpoint *endpoint = interface->endpoints[e];
+            for (int e = 0; UsbEndpoint* endpoint = interface->getEndpoint(e); e++) {              
               for (int direction = 0; direction <= 1; direction++) {
 
                 int packetSize = direction ? endpoint->txPacketSize : endpoint->rxPacketSize;
@@ -348,8 +344,8 @@ void UsbControlEndpoint::setup(SetupData *setupData) {
                           : descriptorIndex == StringDescriptorID::SERIAL
                                 ? device->getSerial()
                                 : descriptorIndex >= StringDescriptorID::INTERFACE_BASE &&
-                                          device->interfaces[descriptorIndex - StringDescriptorID::INTERFACE_BASE]
-                                      ? device->interfaces[descriptorIndex - StringDescriptorID::INTERFACE_BASE]
+                                          device->getInterface(descriptorIndex - StringDescriptorID::INTERFACE_BASE)
+                                      ? device->getInterface(descriptorIndex - StringDescriptorID::INTERFACE_BASE)
                                             ->getLabel()
                                       : "";
             for (int c = 0; str[c]; c++) {
@@ -389,7 +385,7 @@ void UsbControlEndpoint::setup(SetupData *setupData) {
     }
 
   } else if (setupData->bmRequestType.recipient == INTERFACE) {
-    UsbInterface *interface = device->interfaces[setupData->wIndex];
+    UsbInterface *interface = device->getInterface(setupData->wIndex);
     if (interface) {
       interface->setup(setupData);
     }
