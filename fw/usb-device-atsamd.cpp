@@ -75,7 +75,7 @@ public:
     dfllCtrl.setUSBCRM(true).setQLDIS(false).setCCDIS(true).setENABLE(true);
     target::SYSCTRL.DFLLCTRL = dfllCtrl;
 
-    for (volatile int c = 0; c < 100000; c++);
+    //for (volatile int c = 0; c < 100000; c++);
 
     target::SYSCTRL.DFLLVAL.setCOARSE(102);
     target::SYSCTRL.DFLLVAL.setFINE(23);
