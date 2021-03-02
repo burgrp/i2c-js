@@ -57,7 +57,7 @@ public:
 
     target::SYSCTRL.DFLLVAL.setCOARSE(target::NVMCALIB.SOFT1.getDFLL48M_COARSE_CAL());
     // 565 seems to be better than expected mid FINE value 512, perhaps depends on temperature?
-    target::SYSCTRL.DFLLVAL.setFINE(565);
+    //target::SYSCTRL.DFLLVAL.setFINE(565);
 
     target::GCLK.GENCTRL = target::GCLK.GENCTRL.bare().setID(1).setSRC(target::gclk::GENCTRL::SRC::DFLL48M).setGENEN(true).setOE(true); // PA16
 
