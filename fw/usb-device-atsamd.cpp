@@ -72,15 +72,20 @@ public:
 
     target::sysctrl::DFLLCTRL::Register dfllCtrl;
     dfllCtrl = 0;
-    dfllCtrl.setUSBCRM(true).setQLDIS(false).setCCDIS(true).setENABLE(true);
+    dfllCtrl.setUSBCRM(true).setQLDIS(false).setCCDIS(true).setMODE(false).setENABLE(true);
     target::SYSCTRL.DFLLCTRL = dfllCtrl;
 
-    //for (volatile int c = 0; c < 100000; c++);
+    target::SYSCTRL.DFLLVAL.setCOARSE(*(unsigned int *)0x806024 >> 26 & 0x3F);
+    //target::SYSCTRL.DFLLVAL.setCOARSE(102);
+    target::SYSCTRL.DFLLVAL.setFINE(2617);
 
-    target::SYSCTRL.DFLLVAL.setCOARSE(102);
-    target::SYSCTRL.DFLLVAL.setFINE(23);
+    // struct __attribute__((packed)) NVM {
+    //   unsigned long long :58;
+    //   unsigned int DFLL48M_COARSE_CAL: 6;
+    // };
+    
+    // NVM * nvm = (NVM*) 0x806020;
 
-    for (volatile int c = 0; c < 100000; c++);
 
     target::gclk::GENCTRL::Register gc2;
     gc2 = 0;
