@@ -67,14 +67,5 @@ void initApplication() {
 
   timer.start(10);
 
-  target::PORT.PMUX[4].setPMUXE(target::port::PMUX::PMUXE::H);
-  target::PORT.PINCFG[8].setPMUXEN(true);
-
-  target::PORT.PMUX[4].setPMUXO(target::port::PMUX::PMUXO::H);
-  target::PORT.PINCFG[9].setPMUXEN(true);
-
-  target::PORT.PMUX[8].setPMUXE(target::port::PMUX::PMUXE::H);
-  target::PORT.PINCFG[16].setPMUXEN(true);
-
   testDevice.init();
 }

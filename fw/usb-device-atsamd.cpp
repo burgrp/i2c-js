@@ -47,7 +47,7 @@ public:
 
     target::SYSCTRL.OSC8M.setPRESC(target::sysctrl::OSC8M::PRESC::_1);
 
-    target::GCLK.GENCTRL = target::GCLK.GENCTRL.bare().setID(0).setSRC(target::gclk::GENCTRL::SRC::OSC8M).setGENEN(true).setOE(true); // PA8
+    target::GCLK.GENCTRL = target::GCLK.GENCTRL.bare().setID(0).setSRC(target::gclk::GENCTRL::SRC::OSC8M).setGENEN(true);
 
     // GC1 48MHz
 
@@ -57,9 +57,9 @@ public:
 
     target::SYSCTRL.DFLLVAL.setCOARSE(target::NVMCALIB.SOFT1.getDFLL48M_COARSE_CAL());
     // 565 seems to be better than expected mid FINE value 512, perhaps depends on temperature?
-    //target::SYSCTRL.DFLLVAL.setFINE(565);
+    target::SYSCTRL.DFLLVAL.setFINE(565);
 
-    target::GCLK.GENCTRL = target::GCLK.GENCTRL.bare().setID(1).setSRC(target::gclk::GENCTRL::SRC::DFLL48M).setGENEN(true).setOE(true); // PA16
+    target::GCLK.GENCTRL = target::GCLK.GENCTRL.bare().setID(1).setSRC(target::gclk::GENCTRL::SRC::DFLL48M).setGENEN(true);
 
     // GC1 -> USB
 
