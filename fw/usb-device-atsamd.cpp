@@ -49,28 +49,21 @@ public:
 
     target::GCLK.GENCTRL = target::GCLK.GENCTRL.bare().setID(0).setSRC(target::gclk::GENCTRL::SRC::OSC8M).setGENEN(true).setOE(true); // PA8
 
-    // GC2 48MHz
+    // GC1 48MHz
 
     target::SYSCTRL.DFLLCTRL.setONDEMAND(false);
     target::SYSCTRL.DFLLCTRL.setUSBCRM(true);
     target::SYSCTRL.DFLLCTRL.setENABLE(true);
 
-    struct __attribute__((packed)) NVM {
-      unsigned long long :58;
-      unsigned int DFLL48M_COARSE_CAL: 6;
-    };
-    
-    NVM * nvm = (NVM*) 0x806020;
-
     target::SYSCTRL.DFLLVAL.setCOARSE(target::NVMCALIB.SOFT1.getDFLL48M_COARSE_CAL());
     // 565 seems to be better than expected mid FINE value 512, perhaps depends on temperature?
     target::SYSCTRL.DFLLVAL.setFINE(565);
 
-    target::GCLK.GENCTRL = target::GCLK.GENCTRL.bare().setID(2).setSRC(target::gclk::GENCTRL::SRC::DFLL48M).setGENEN(true).setOE(true); // PA16
+    target::GCLK.GENCTRL = target::GCLK.GENCTRL.bare().setID(1).setSRC(target::gclk::GENCTRL::SRC::DFLL48M).setGENEN(true).setOE(true); // PA16
 
-    // GC2 -> USB
+    // GC1 -> USB
 
-    target::GCLK.CLKCTRL = target::GCLK.CLKCTRL.bare().setID(target::gclk::CLKCTRL::ID::USB).setGEN(target::gclk::CLKCTRL::GEN::GCLK2).setCLKEN(true);
+    target::GCLK.CLKCTRL = target::GCLK.CLKCTRL.bare().setID(target::gclk::CLKCTRL::ID::USB).setGEN(target::gclk::CLKCTRL::GEN::GCLK1).setCLKEN(true);
 
     // enable USB pins
 
