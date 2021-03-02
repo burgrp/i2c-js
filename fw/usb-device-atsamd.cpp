@@ -47,57 +47,30 @@ public:
 
     target::SYSCTRL.OSC8M.setPRESC(target::sysctrl::OSC8M::PRESC::_1);
 
-    target::gclk::GENCTRL::Register gc0;
-    gc0 = 0;
-    gc0.setID(0).setSRC(target::gclk::GENCTRL::SRC::OSC8M).setGENEN(true).setOE(true); // PA8
-    target::GCLK.GENCTRL = gc0;
-
-    // GC1 32kHz
-
-    target::SYSCTRL.OSC32K.setENABLE(true).setEN32K(true);
-
-    target::gclk::GENCTRL::Register gc1;
-    gc1 = 0;
-    gc1.setID(1).setSRC(target::gclk::GENCTRL::SRC::OSC32K).setGENEN(true).setOE(true); // PA9
-    target::GCLK.GENCTRL = gc1;
-
-    // GC1 -> reference of DFLL48
-
-    target::gclk::CLKCTRL::Register ccDpllRefClk;
-    ccDpllRefClk = 0;
-    ccDpllRefClk.setGEN(target::gclk::CLKCTRL::GEN::GCLK1).setID(target::gclk::CLKCTRL::ID::DFLL48).setCLKEN(true);
-    target::GCLK.CLKCTRL = ccDpllRefClk;
+    target::GCLK.GENCTRL = target::GCLK.GENCTRL.bare().setID(0).setSRC(target::gclk::GENCTRL::SRC::OSC8M).setGENEN(true).setOE(true); // PA8
 
     // GC2 48MHz
 
-    target::sysctrl::DFLLCTRL::Register dfllCtrl;
-    dfllCtrl = 0;
-    dfllCtrl.setUSBCRM(true).setQLDIS(false).setCCDIS(true).setMODE(false).setENABLE(true);
-    target::SYSCTRL.DFLLCTRL = dfllCtrl;
+    target::SYSCTRL.DFLLCTRL.setONDEMAND(false);
+    target::SYSCTRL.DFLLCTRL.setUSBCRM(true);
+    target::SYSCTRL.DFLLCTRL.setENABLE(true);
 
-    target::SYSCTRL.DFLLVAL.setCOARSE(*(unsigned int *)0x806024 >> 26 & 0x3F);
-    //target::SYSCTRL.DFLLVAL.setCOARSE(102);
-    target::SYSCTRL.DFLLVAL.setFINE(2617);
-
-    // struct __attribute__((packed)) NVM {
-    //   unsigned long long :58;
-    //   unsigned int DFLL48M_COARSE_CAL: 6;
-    // };
+    struct __attribute__((packed)) NVM {
+      unsigned long long :58;
+      unsigned int DFLL48M_COARSE_CAL: 6;
+    };
     
-    // NVM * nvm = (NVM*) 0x806020;
+    NVM * nvm = (NVM*) 0x806020;
 
+    target::SYSCTRL.DFLLVAL.setCOARSE(target::NVMCALIB.SOFT1.getDFLL48M_COARSE_CAL());
+    // 565 seems to be better than expected mid FINE value 512, perhaps depends on temperature?
+    target::SYSCTRL.DFLLVAL.setFINE(565);
 
-    target::gclk::GENCTRL::Register gc2;
-    gc2 = 0;
-    gc2.setID(2).setSRC(target::gclk::GENCTRL::SRC::DFLL48M).setGENEN(true).setOE(true); // PA16
-    target::GCLK.GENCTRL = gc2;
+    target::GCLK.GENCTRL = target::GCLK.GENCTRL.bare().setID(2).setSRC(target::gclk::GENCTRL::SRC::DFLL48M).setGENEN(true).setOE(true); // PA16
 
     // GC2 -> USB
 
-    target::gclk::CLKCTRL::Register ccUsb;
-    ccUsb = 0;
-    ccUsb.setID(target::gclk::CLKCTRL::ID::USB).setGEN(target::gclk::CLKCTRL::GEN::GCLK2).setCLKEN(true);
-    target::GCLK.CLKCTRL = ccUsb;
+    target::GCLK.CLKCTRL = target::GCLK.CLKCTRL.bare().setID(target::gclk::CLKCTRL::ID::USB).setGEN(target::gclk::CLKCTRL::GEN::GCLK2).setCLKEN(true);
 
     // enable USB pins
 
