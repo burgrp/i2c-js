@@ -25,22 +25,19 @@ class AtSamdUsbDevice : public UsbDevice {
   } epDescriptors[8][2];
 
 public:
-
   unsigned char serialNumber[SERIAL_NUMBER_LENGTH + 1];
 
   void init() {
 
     // calculate serial number
 
-    unsigned int snWordAddresses[4] = {
-      0x0080A00C,0x0080A040,0x0080A044,0x0080A048
-    };
+    unsigned int snWordAddresses[4] = {0x0080A00C, 0x0080A040, 0x0080A044, 0x0080A048};
 
     for (int i = 0; i < SERIAL_NUMBER_LENGTH; i++) {
-      unsigned int word = *(unsigned int*)(snWordAddresses[i >> 2]);
+      unsigned int word = *(unsigned int *)(snWordAddresses[i >> 2]);
       unsigned char byte = word >> (i & 3);
-      unsigned char v = (byte >> 4) + (byte & 0xF);      
-      serialNumber[i] = v < 10? v + '0': v - 10 + 'A';
+      unsigned char v = (byte >> 4) + (byte & 0xF);
+      serialNumber[i] = v < 10 ? v + '0' : v - 10 + 'A';
     }
     serialNumber[sizeof(serialNumber) - 1] = 0;
 
@@ -64,23 +61,30 @@ public:
     gc1.setID(1).setSRC(target::gclk::GENCTRL::SRC::OSC32K).setGENEN(true).setOE(true); // PA9
     target::GCLK.GENCTRL = gc1;
 
-    // GC1 -> reference of FDPLL96M
+    // GC1 -> reference of DFLL48
 
     target::gclk::CLKCTRL::Register ccDpllRefClk;
     ccDpllRefClk = 0;
-    ccDpllRefClk.setID(target::gclk::CLKCTRL::ID::FDPLL).setGEN(target::gclk::CLKCTRL::GEN::GCLK1).setCLKEN(true);
-
+    ccDpllRefClk.setGEN(target::gclk::CLKCTRL::GEN::GCLK1).setID(target::gclk::CLKCTRL::ID::DFLL48).setCLKEN(true);
     target::GCLK.CLKCTRL = ccDpllRefClk;
 
     // GC2 48MHz
 
-    target::SYSCTRL.DPLLCTRLB.setREFCLK(target::sysctrl::DPLLCTRLB::REFCLK::GCLK);
-    target::SYSCTRL.DPLLRATIO.setLDR(1490).setLDRFRAC(15);
-    target::SYSCTRL.DPLLCTRLA.setENABLE(true);
+    target::sysctrl::DFLLCTRL::Register dfllCtrl;
+    dfllCtrl = 0;
+    dfllCtrl.setUSBCRM(true).setQLDIS(false).setCCDIS(true).setENABLE(true);
+    target::SYSCTRL.DFLLCTRL = dfllCtrl;
+
+    for (volatile int c = 0; c < 100000; c++);
+
+    target::SYSCTRL.DFLLVAL.setCOARSE(102);
+    target::SYSCTRL.DFLLVAL.setFINE(23);
+
+    for (volatile int c = 0; c < 100000; c++);
 
     target::gclk::GENCTRL::Register gc2;
     gc2 = 0;
-    gc2.setID(2).setSRC(target::gclk::GENCTRL::SRC::DPLL96M).setGENEN(true).setOE(true); // PA16
+    gc2.setID(2).setSRC(target::gclk::GENCTRL::SRC::DFLL48M).setGENEN(true).setOE(true); // PA16
     target::GCLK.GENCTRL = gc2;
 
     // GC2 -> USB
@@ -186,9 +190,7 @@ public:
 
   void stall(int epIndex) { target::USB.DEVICE.EPSTATUSSET[epIndex].reg.setSTALLRQ(1, true); }
 
-  const char *getSerial() {
-    return (const char *)&serialNumber;
-  }
+  const char *getSerial() { return (const char *)&serialNumber; }
 };
 
 } // namespace atsamd::usbd
