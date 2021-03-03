@@ -16,6 +16,7 @@
       "usb-declarations.cpp",
       "usb-endpoint.cpp",
       "usb-interface.cpp",
+      "usb-control-endpoint.cpp",
       "usb-device.cpp",
       "usb-device-atsamd.cpp",
       "main.cpp"
