@@ -1,7 +1,0 @@
-var searchData=
-[
-  ['setaddress_183',['setAddress',['../classatsamd_1_1usbd_1_1AtSamdUsbDevice.html#ae250b6a7bec6fa679aca91509e487e0b',1,'atsamd::usbd::AtSamdUsbDevice::setAddress()'],['../classusbd_1_1UsbDevice.html#af818490fd2ae6f4a89a668297f7f38b6',1,'usbd::UsbDevice::setAddress()']]],
-  ['setup_184',['setup',['../classTestInterface.html#aeb5d68a72c584fba7ce122b0b4d8aa22',1,'TestInterface::setup()'],['../classusbd_1_1UsbControlEndpoint.html#a290e404daab2e404c4a10a27f07ff01d',1,'usbd::UsbControlEndpoint::setup()'],['../classusbd_1_1UsbDevice.html#a90db56efff184ef71dfba4388c534534',1,'usbd::UsbDevice::setup()'],['../classusbd_1_1UsbEndpoint.html#a25095d4aa7f7a292841e20cd0468f639',1,'usbd::UsbEndpoint::setup()'],['../classusbd_1_1UsbInterface.html#a296281fbdff5bc42f4457ca807a61637',1,'usbd::UsbInterface::setup()']]],
-  ['stall_185',['stall',['../classatsamd_1_1usbd_1_1AtSamdUsbDevice.html#a86619e7620eafeadbf3aa2c13259127c',1,'atsamd::usbd::AtSamdUsbDevice::stall()'],['../classusbd_1_1UsbDevice.html#a6935f963201942d09cc02640eb885d5f',1,'usbd::UsbDevice::stall()'],['../classusbd_1_1UsbEndpoint.html#ab30e7409c90da01465cb619888483c3c',1,'usbd::UsbEndpoint::stall()']]],
-  ['starttx_186',['startTx',['../classatsamd_1_1usbd_1_1AtSamdUsbDevice.html#af285e532e9428b30ee36b5a7fcd35cb3',1,'atsamd::usbd::AtSamdUsbDevice::startTx()'],['../classusbd_1_1UsbDevice.html#a7b6ee822902f89403b53c5bd3fe969f9',1,'usbd::UsbDevice::startTx()'],['../classusbd_1_1UsbEndpoint.html#a49b569d23a021e447dfe46e343374767',1,'usbd::UsbEndpoint::startTx()']]]
-];

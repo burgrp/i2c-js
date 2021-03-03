@@ -1,5 +1,0 @@
-<map id="Graphical Class Hierarchy" name="Graphical Class Hierarchy">
-<area shape="rect" id="node1" href="$classusbd_1_1UsbEndpoint.html" title="USB endpoint base class." alt="" coords="5,31,148,57"/>
-<area shape="rect" id="node2" href="$classCrcEndpoint.html" title=" " alt="" coords="241,5,341,32"/>
-<area shape="rect" id="node3" href="$classusbd_1_1UsbControlEndpoint.html" title="USB control endpoint implementation class." alt="" coords="196,56,387,83"/>
-</map>

@@ -1,6 +1,0 @@
-<map id="atsamd::usbd::AtSamdUsbDevice" name="atsamd::usbd::AtSamdUsbDevice">
-<area shape="rect" id="node1" title=" " alt="" coords="5,95,244,121"/>
-<area shape="rect" id="node2" href="$classusbd_1_1UsbDevice.html" title="USB device base class." alt="" coords="274,5,405,32"/>
-<area shape="rect" id="node3" href="$classusbd_1_1UsbEndpoint.html" title="USB endpoint base class." alt="" coords="365,184,508,211"/>
-<area shape="rect" id="node4" href="$classusbd_1_1UsbInterface.html" title="USB interface base class." alt="" coords="365,95,509,121"/>
-</map>
