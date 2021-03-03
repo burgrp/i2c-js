@@ -1,0 +1,9 @@
+<map id="TestDevice" name="TestDevice">
+<area shape="rect" id="node1" title=" " alt="" coords="125,451,218,477"/>
+<area shape="rect" id="node2" href="$classatsamd_1_1usbd_1_1AtSamdUsbDevice.html" title=" " alt="" coords="5,145,244,172"/>
+<area shape="rect" id="node3" href="$classusbd_1_1UsbDevice.html" title="USB device base class." alt="" coords="291,5,422,32"/>
+<area shape="rect" id="node4" href="$classusbd_1_1UsbEndpoint.html" title="USB endpoint base class." alt="" coords="311,196,453,223"/>
+<area shape="rect" id="node5" href="$classusbd_1_1UsbInterface.html" title="USB interface base class." alt="" coords="199,95,343,121"/>
+<area shape="rect" id="node7" href="$classCrcEndpoint.html" title=" " alt="" coords="317,272,417,299"/>
+<area shape="rect" id="node6" href="$classTestInterface.html" title=" " alt="" coords="211,361,318,388"/>
+</map>

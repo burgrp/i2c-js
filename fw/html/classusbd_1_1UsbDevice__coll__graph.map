@@ -1,0 +1,5 @@
+<map id="usbd::UsbDevice" name="usbd::UsbDevice">
+<area shape="rect" id="node1" title="USB device base class." alt="" coords="78,5,208,32"/>
+<area shape="rect" id="node2" href="$classusbd_1_1UsbEndpoint.html" title="USB endpoint base class." alt="" coords="72,184,214,211"/>
+<area shape="rect" id="node3" href="$classusbd_1_1UsbInterface.html" title="USB interface base class." alt="" coords="71,95,215,121"/>
+</map>
