@@ -33,7 +33,7 @@ public:
     usbd::UsbEndpoint::init();
   }
 
-  void rxComplete(int length) {    
+  void rxComplete(int length) {
 
     unsigned int crc = 0;
 
@@ -61,14 +61,17 @@ public:
       device->controlEndpoint.startTx(0);
     }
   }
-
 };
 
 class TestDevice : public atsamd::usbd::AtSamdUsbDevice {
 public:
   TestInterface testInterface;
 
-  virtual UsbInterface *getInterface(int index) { return index == 0 ? &testInterface : NULL; };
+  UsbControlEndpoint controlEndpoint;
+
+  UsbInterface *getInterface(int index) { return index == 0 ? &testInterface : NULL; };
+
+  UsbEndpoint *getControlEndpoint() { return &controlEndpoint; };
 
   void checkDescriptor(DeviceDescriptor *deviceDesriptor) {
     deviceDesriptor->idVendor = 0xFEE0;

@@ -5,11 +5,12 @@ public:
   UsbEndpoint *endpoints[MAX_ENDPOINTS];
   int endpointCount;
 
-  UsbControlEndpoint controlEndpoint;
-
   virtual void init() {
-    controlEndpoint.device = this;
-    controlEndpoint.init();
+
+    UsbEndpoint* controlEndpoint = getControlEndpoint();
+
+    controlEndpoint->device = this;
+    controlEndpoint->init();
 
     for (int i = 0; UsbInterface *interface = getInterface(i); i++) {
       interface->device = this;
@@ -17,8 +18,8 @@ public:
     }
 
     endpointCount = 0;
-    controlEndpoint.index = endpointCount++;
-    endpoints[controlEndpoint.index] = &controlEndpoint;
+    controlEndpoint->index = endpointCount++;
+    endpoints[controlEndpoint->index] = &controlEndpoint;
 
     for (int i = 0; UsbInterface *interface = getInterface(i); i++) {
       for (int e = 0; UsbEndpoint* endpoint = interface->getEndpoint(e); e++) {
@@ -28,6 +29,7 @@ public:
     }
   }
 
+  virtual UsbEndpoint *getControlEndpoint() = 0;
   virtual UsbInterface *getInterface(int index) = 0;
 
   virtual void startTx(int epIndex, int length) = 0;
