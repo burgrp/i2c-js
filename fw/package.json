@@ -8,17 +8,12 @@
   "dependencies": {
     "@si14/si-application-events": "^1.0.2",
     "@si14/si-atsamd-safeboot": "^1.0.2",
+    "@si14/si-atsamd-usbd": "^1.0.0",
     "@si14/si-atsamd11c14a": "^2.0.3",
     "@si14/si-systick-timer": "^1.0.4"
   },
   "silicon": {
     "sources": [
-      "usb-declarations.cpp",
-      "usb-endpoint.cpp",
-      "usb-interface.cpp",
-      "usb-device.cpp",
-      "usb-control-endpoint.cpp",
-      "usb-device-atsamd.cpp",
       "main.cpp"
     ],
     "symbols": {
