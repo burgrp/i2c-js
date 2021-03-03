@@ -135,7 +135,7 @@ public:
   virtual void checkDescriptor(EndpointDescriptor *deviceDesriptor){};
   void startTx(int length);
   void stall();
-  virtual void rxComplete(){};
+  virtual void rxComplete(int length){};
   virtual void txComplete(){};
 };
 

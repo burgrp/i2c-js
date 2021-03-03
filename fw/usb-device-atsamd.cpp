@@ -27,6 +27,39 @@ class AtSamdUsbDevice : public UsbDevice {
 public:
   unsigned char serialNumber[SERIAL_NUMBER_LENGTH + 1];
 
+  void useInternalOscilators() {
+    // GC0 8MHz
+
+    target::SYSCTRL.OSC8M.setPRESC(target::sysctrl::OSC8M::PRESC::_1);
+
+    target::GCLK.GENCTRL =
+        target::GCLK.GENCTRL.bare().setID(0).setSRC(target::gclk::GENCTRL::SRC::OSC8M).setGENEN(true).setOE(true);
+
+    // Load calibration for OSC32K
+
+    target::SYSCTRL.OSC32K.setCALIB(target::NVMCALIB.SOFT1.getOSC32K_CAL());
+
+    // GC1 48MHz
+
+    target::SYSCTRL.DFLLCTRL.setONDEMAND(false);
+    target::SYSCTRL.DFLLCTRL.setUSBCRM(true);
+    target::SYSCTRL.DFLLCTRL.setENABLE(true);
+
+    target::SYSCTRL.DFLLVAL.setCOARSE(target::NVMCALIB.SOFT1.getDFLL48M_COARSE_CAL());
+    // 570 seems to be better than expected mid FINE value 512, perhaps depends on temperature?
+    target::SYSCTRL.DFLLVAL.setFINE(570);
+
+    target::GCLK.GENCTRL =
+        target::GCLK.GENCTRL.bare().setID(1).setSRC(target::gclk::GENCTRL::SRC::DFLL48M).setGENEN(true).setOE(true);
+
+    // GC1 -> USB
+
+    target::GCLK.CLKCTRL = target::GCLK.CLKCTRL.bare()
+                               .setID(target::gclk::CLKCTRL::ID::USB)
+                               .setGEN(target::gclk::CLKCTRL::GEN::GCLK1)
+                               .setCLKEN(true);
+  }
+
   void init() {
 
     // calculate serial number
@@ -42,28 +75,6 @@ public:
     serialNumber[sizeof(serialNumber) - 1] = 0;
 
     UsbDevice::init();
-
-    // GC0 8MHz
-
-    target::SYSCTRL.OSC8M.setPRESC(target::sysctrl::OSC8M::PRESC::_1);
-
-    target::GCLK.GENCTRL = target::GCLK.GENCTRL.bare().setID(0).setSRC(target::gclk::GENCTRL::SRC::OSC8M).setGENEN(true);
-
-    // GC1 48MHz
-
-    target::SYSCTRL.DFLLCTRL.setONDEMAND(false);
-    target::SYSCTRL.DFLLCTRL.setUSBCRM(true);
-    target::SYSCTRL.DFLLCTRL.setENABLE(true);
-
-    target::SYSCTRL.DFLLVAL.setCOARSE(target::NVMCALIB.SOFT1.getDFLL48M_COARSE_CAL());
-    // 565 seems to be better than expected mid FINE value 512, perhaps depends on temperature?
-    target::SYSCTRL.DFLLVAL.setFINE(565);
-
-    target::GCLK.GENCTRL = target::GCLK.GENCTRL.bare().setID(1).setSRC(target::gclk::GENCTRL::SRC::DFLL48M).setGENEN(true);
-
-    // GC1 -> USB
-
-    target::GCLK.CLKCTRL = target::GCLK.CLKCTRL.bare().setID(target::gclk::CLKCTRL::ID::USB).setGEN(target::gclk::CLKCTRL::GEN::GCLK1).setCLKEN(true);
 
     // enable USB pins
 
@@ -107,6 +118,7 @@ public:
                               ? 2
                               : size == 64 ? 3
                                            : size == 128 ? 4 : size == 256 ? 5 : size == 512 ? 6 : size == 1023 ? 7 : 0;
+          epDescriptors[e][bank].PCKSIZE.MULTI_PACKET_SIZE = bank == 0 ? endpoint->rxBufferSize : 0;
           epDescriptors[e][bank].PCKSIZE.AUTO_ZLP = 1;
 
         } else {
@@ -133,10 +145,12 @@ public:
       UsbEndpoint *endpoint = endpoints[e];
 
       if (target::USB.DEVICE.EPINTFLAG[e].reg.getTRCPT(0)) {
-        endpoint->rxComplete();
-        target::USB.DEVICE.EPINTFLAG[e].reg.setTRCPT(0, true);
-        epDescriptors[e][0].PCKSIZE.BYTE_COUNT = 0;
-        target::USB.DEVICE.EPSTATUSCLR[e].reg.setBK_RDY(0, true);
+        if (e > 0) {
+          endpoint->rxComplete(epDescriptors[e][0].PCKSIZE.BYTE_COUNT);
+          target::USB.DEVICE.EPINTFLAG[e].reg.setTRCPT(0, true);
+          epDescriptors[e][0].PCKSIZE.BYTE_COUNT = 0;
+          target::USB.DEVICE.EPSTATUSCLR[e].reg.setBK_RDY(0, true);
+        }
       }
 
       if (target::USB.DEVICE.EPINTFLAG[e].reg.getTRCPT(1)) {
