@@ -1,13 +1,61 @@
 namespace usbd {
 
+/**
+ * @brief USB device base class
+ *
+ * This class is not subclassed directly by the application.
+ * There must always be chip specific implementation as midclass.
+ * This means there is a hierarchy like:
+ * UsbDevice <- ChipAbcUsbDevice <- ApplicationXyzUsbDevice.
+ *
+ * Typical application subclass of a chip midclass (ATSAMD in this case) looks like:
+ * ```cpp
+ * class TestDevice : public atsamd::usbd::AtSamdUsbDevice {
+ * public:
+ *  TestInterface testInterface;
+ *
+ *  UsbControlEndpoint controlEndpoint;
+ *
+ *  UsbInterface *getInterface(int index) { return index == 0 ? &testInterface : NULL; };
+ *
+ *  UsbEndpoint *getControlEndpoint() { return &controlEndpoint; };
+ *
+ *  void checkDescriptor(DeviceDescriptor *deviceDesriptor) {
+ *    deviceDesriptor->idVendor = 0xFEE0;
+ *    deviceDesriptor->idProduct = 0x0001;
+ *  };
+ *
+ * };
+ * ```
+ * 
+ * Chip midclass must overload following methods:
+ * - void init(); - must call UsbDevice::init()
+ * - void setAddress(int address);
+ * - void startTx(int epIndex, int length);
+ * - void stall(int epIndex);
+*/
 class UsbDevice {
 public:
+  /**
+   * Array of endpoints as collected by the init() method.
+   */
   UsbEndpoint *endpoints[MAX_ENDPOINTS];
+
+  /**
+   * Number of endpoints as collected by the init() method.
+   */
   int endpointCount;
 
+  /**
+   * Device initialization.
+   *
+   * Called from chip midclass init() method.
+   *
+   * UsbEndpoint::init() is responsible for collecting of endpoints from interfaces.
+   */
   virtual void init() {
 
-    UsbEndpoint* controlEndpoint = getControlEndpoint();
+    UsbEndpoint *controlEndpoint = getControlEndpoint();
 
     controlEndpoint->device = this;
     controlEndpoint->init();
@@ -19,204 +67,130 @@ public:
 
     endpointCount = 0;
     controlEndpoint->index = endpointCount++;
-    endpoints[controlEndpoint->index] = &controlEndpoint;
+    endpoints[controlEndpoint->index] = controlEndpoint;
 
     for (int i = 0; UsbInterface *interface = getInterface(i); i++) {
-      for (int e = 0; UsbEndpoint* endpoint = interface->getEndpoint(e); e++) {
+      for (int e = 0; UsbEndpoint *endpoint = interface->getEndpoint(e); e++) {
         endpoint->index = endpointCount++;
         endpoints[endpoint->index] = endpoint;
       }
     }
   }
 
+  /**
+   * Gets control endpoint.
+   *
+   * Called internally from the library.
+   *
+   * Must be overloaded by the application subclass.
+   *
+   * @return UsbEndpoint*
+   */
   virtual UsbEndpoint *getControlEndpoint() = 0;
+
+  /**
+   * Gets interface by index.
+   *
+   * Called internally from the library.
+   *
+   * Must be overloaded by the application subclass.
+   *
+   * @param index zero based in scope of device
+   * @return UsbInterface*
+   */
   virtual UsbInterface *getInterface(int index) = 0;
 
-  virtual void startTx(int epIndex, int length) = 0;
-  virtual void stall(int epIndex) = 0;
-
+  /**
+   * Handler of device control request.
+   *
+   * Called internally from the library.
+   *
+   * May be overloaded by application subclass to implement vendor request.
+   *
+   * @param setupData
+   */
   virtual void setup(SetupData *setupData){};
+
+  /**
+   * Called when generating device descriptor.
+   *
+   * Called internally from the library.
+   *
+   * May be overloaded by application subclass to modify the default descriptor.
+   *
+   * @param deviceDesriptor
+   */
   virtual void checkDescriptor(DeviceDescriptor *deviceDesriptor){};
 
+  /**
+   * Get string identifier of the manufacturer.
+   *
+   * Called internally from the library.
+   *
+   * May be overloaded by application subclass.
+   *
+   * @return const char*
+   */
+  virtual const char *getManufacturer() { return NULL; };
+
+  /**
+   * Get string identifier of the product.
+   *
+   * Called internally from the library.
+   *
+   * May be overloaded by application subclass.
+   *
+   * @return const char*
+   */
+  virtual const char *getProduct() { return NULL; };
+
+  /**
+   * Get string serial number of the device.
+   *
+   * Called internally from the library.
+   *
+   * May be overloaded by application subclass or chip midclass.
+   *
+   * @return const char*
+   */
+  virtual const char *getSerial() { return NULL; };
+
+  /**
+   * Sets device USB address.
+   *
+   * Called internally from the library.
+   *
+   * Must be overloaded by chip midclass.
+   *
+   * @param address
+   */
   virtual void setAddress(int address) = 0;
 
-  virtual const char *getManufacturer() = 0;
-  virtual const char *getProduct() = 0;
-  virtual const char *getSerial() = 0;
+  /**
+   * Starts transmission of the data on the given endpoint.
+   *
+   * Called internally from the library.
+   *
+   * Must be overloaded by chip midclass.
+   *
+   * @param epIndex
+   * @param length
+   */
+  virtual void startTx(int epIndex, int length) = 0;
+
+  /**
+   * Sends stall handshake on the given endpoint.
+   *
+   * Called internally from the library.
+   *
+   * Must be overloaded by chip midclass.
+   *
+   * @param epIndex
+   */
+  virtual void stall(int epIndex) = 0;
 };
 
 void UsbEndpoint::startTx(int length) { device->startTx(index, length); }
 void UsbEndpoint::stall() { device->stall(index); }
-
-void UsbControlEndpoint::txComplete() {
-  if (addressToSet) {
-    device->setAddress(addressToSet);
-    addressToSet = 0;
-  }
-}
-
-void UsbControlEndpoint::setup(SetupData *setupData) {
-
-  if (setupData->bmRequestType.recipient == DEVICE) {
-
-    if (setupData->bmRequestType.type == STANDARD) {
-
-      if (setupData->bRequest == STD_REQUEST_GET_DESCRIPTOR) {
-
-        int descriptorType = setupData->wValue >> 8;
-        int descriptorIndex = setupData->wValue & 0xFF;
-
-        if (descriptorType == DESCRIPTOR_TYPE_DEVICE) {
-
-          DeviceDescriptor *deviceDesriptor = (DeviceDescriptor *)txBufferPtr;
-          zeromem(deviceDesriptor, sizeof(DeviceDescriptor));
-
-          deviceDesriptor->bLength = sizeof(DeviceDescriptor);
-          deviceDesriptor->bDescriptorType = DESCRIPTOR_TYPE_DEVICE;
-          deviceDesriptor->bcdUSB = 0x200;
-          deviceDesriptor->bMaxPacketSize0 = rxPacketSize;
-          deviceDesriptor->iManufacturer = StringDescriptorID::MANUFACTURER;
-          deviceDesriptor->iProduct = StringDescriptorID::PRODUCT;
-          deviceDesriptor->iSerialNumber = StringDescriptorID::SERIAL;
-
-          deviceDesriptor->bNumConfigurations = 1;
-
-          device->checkDescriptor(deviceDesriptor);
-
-          startTx(sizeof(DeviceDescriptor));
-
-        } else if (descriptorType == DESCRIPTOR_TYPE_CONFIGURATION) {
-
-          int totalLength = 0;
-
-          ConfigurationDescriptor *configurationDescriptor = (ConfigurationDescriptor *)(txBuffer + totalLength);
-          zeromem(configurationDescriptor, sizeof(ConfigurationDescriptor));
-          configurationDescriptor->bLength = sizeof(ConfigurationDescriptor);
-          configurationDescriptor->bDescriptorType = DESCRIPTOR_TYPE_CONFIGURATION;
-          configurationDescriptor->bConfigurationValue = 1;
-          configurationDescriptor->bmAttributes.reservedSetTo1 = 1;
-          configurationDescriptor->bMaxPower = 50;
-
-          totalLength += sizeof(ConfigurationDescriptor);
-
-          for (int i = 0; UsbInterface *interface = device->getInterface(i); i++) {
-
-            configurationDescriptor->bNumInterfaces++;
-
-            InterfaceDescriptor *interfaceDescriptor = (InterfaceDescriptor *)(txBuffer + totalLength);
-            zeromem(interfaceDescriptor, sizeof(InterfaceDescriptor));
-            interfaceDescriptor->bLength = sizeof(InterfaceDescriptor);
-            interfaceDescriptor->bDescriptorType = DESCRIPTOR_TYPE_INTERFACE;
-            interfaceDescriptor->bInterfaceNumber = i;
-            interfaceDescriptor->bInterfaceClass = 0xFF;
-            interfaceDescriptor->iInterface = StringDescriptorID::INTERFACE_BASE + i;
-
-            interface->checkDescriptor(interfaceDescriptor);
-            totalLength += sizeof(InterfaceDescriptor);
-
-            for (int e = 0; UsbEndpoint* endpoint = interface->getEndpoint(e); e++) {              
-              for (int direction = 0; direction <= 1; direction++) {
-
-                int packetSize = direction ? endpoint->txPacketSize : endpoint->rxPacketSize;
-
-                if (packetSize) {
-
-                  interfaceDescriptor->bNumEndpoints++;
-
-                  EndpointDescriptor *endpointDescriptor = (EndpointDescriptor *)(txBuffer + totalLength);
-                  zeromem(endpointDescriptor, sizeof(EndpointDescriptor));
-                  endpointDescriptor->bLength = sizeof(EndpointDescriptor);
-                  endpointDescriptor->bDescriptorType = DESCRIPTOR_TYPE_ENDPOINT;
-                  endpointDescriptor->bEndpointAddress.direction = direction;
-                  endpointDescriptor->bEndpointAddress.index = endpoint->index;
-                  endpointDescriptor->bmAttributes.transferType = endpoint->transferType;
-                  endpointDescriptor->bmAttributes.synchronizationType = NO_SYNCHRONIZATION;
-                  endpointDescriptor->bmAttributes.usageType = DATA;
-                  endpointDescriptor->wMaxPacketSize = packetSize;
-                  endpointDescriptor->bInterval = endpoint->transferType == ISOCHRONOUS ? 1 : 10;
-
-                  endpoint->checkDescriptor(endpointDescriptor);
-                  totalLength += sizeof(EndpointDescriptor);
-                }
-              }
-            }
-          }
-
-          configurationDescriptor->wTotalLength = totalLength;
-          startTx(setupData->wLength < totalLength ? setupData->wLength : totalLength);
-
-        } else if (descriptorType == DESCRIPTOR_TYPE_STRING) {
-
-          StringDescriptor *stringDescriptor = (StringDescriptor *)txBuffer;
-          stringDescriptor->bDescriptorType = DESCRIPTOR_TYPE_STRING;
-          stringDescriptor->bLength = 2;
-
-          if (descriptorIndex == 0) {
-
-            stringDescriptor->unicodeData[0] = 0x0409;
-            stringDescriptor->bLength += 2;
-
-          } else {
-
-            const char *str =
-                descriptorIndex == StringDescriptorID::MANUFACTURER
-                    ? device->getManufacturer()
-                    : descriptorIndex == StringDescriptorID::PRODUCT
-                          ? device->getProduct()
-                          : descriptorIndex == StringDescriptorID::SERIAL
-                                ? device->getSerial()
-                                : descriptorIndex >= StringDescriptorID::INTERFACE_BASE &&
-                                          device->getInterface(descriptorIndex - StringDescriptorID::INTERFACE_BASE)
-                                      ? device->getInterface(descriptorIndex - StringDescriptorID::INTERFACE_BASE)
-                                            ->getLabel()
-                                      : "";
-            for (int c = 0; str[c]; c++) {
-              stringDescriptor->unicodeData[c] = str[c];
-              stringDescriptor->bLength += 2;
-            }
-          }
-          startTx(stringDescriptor->bLength);
-
-        } else {
-          startTx(0);
-        }
-
-      } else if (setupData->bRequest == STD_REQUEST_SET_ADDRESS) {
-
-        addressToSet = setupData->wValue;
-        startTx(0);
-
-      } else if (setupData->bRequest == STD_REQUEST_GET_CONFIGURATION) {
-
-        txBuffer[0] = 1;
-        startTx(1);
-
-      } else if (setupData->bRequest == STD_REQUEST_SET_CONFIGURATION) {
-
-        startTx(0);
-
-      } else if (setupData->bRequest == STD_REQUEST_GET_STATUS) {
-
-        txBuffer[0] = 0;
-        txBuffer[1] = 0;
-        startTx(2);
-      }
-
-    } else {
-      device->setup(setupData);
-    }
-
-  } else if (setupData->bmRequestType.recipient == INTERFACE) {
-    UsbInterface *interface = device->getInterface(setupData->wIndex);
-    if (interface) {
-      interface->setup(setupData);
-    }
-  } else if (setupData->bmRequestType.recipient == ENDPOINT) {
-    UsbEndpoint *endpoint = device->endpoints[setupData->wIndex & 0x0F];
-    if (endpoint && endpoint != this) {
-      endpoint->setup(setupData);
-    }
-  }
-}
 
 } // namespace usbd

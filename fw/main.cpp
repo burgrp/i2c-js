@@ -58,7 +58,7 @@ public:
   void setup(SetupData *setup) {
     if (setup->bRequest = 0x10) {
       ledMode = (LedMode)setup->wValue;
-      device->controlEndpoint.startTx(0);
+      device->getControlEndpoint()->startTx(0);
     }
   }
 };

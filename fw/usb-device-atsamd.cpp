@@ -24,6 +24,44 @@ class AtSamdUsbDevice : public UsbDevice {
     } STATUS_BK;
   } epDescriptors[8][2];
 
+  void usbReset() {
+
+    for (int e = 0; endpoints[e]; e++) {
+      UsbEndpoint *endpoint = endpoints[e];
+
+      for (int bank = 0; bank <= 1; bank++) {
+        unsigned char *data = bank ? endpoint->txBufferPtr : endpoint->rxBufferPtr;
+        int size = bank ? endpoint->txPacketSize : endpoint->rxPacketSize;
+
+        if (endpoint && data && size) {
+          target::USB.DEVICE.EPCFG[e].reg.setEPTYPE(bank, 1 + endpoint->transferType);
+          epDescriptors[e][bank].ADDR = data;
+          epDescriptors[e][bank].PCKSIZE.SIZE =
+              size == 0
+                  ? 0
+                  : size == 16
+                        ? 1
+                        : size == 32
+                              ? 2
+                              : size == 64 ? 3
+                                           : size == 128 ? 4 : size == 256 ? 5 : size == 512 ? 6 : size == 1023 ? 7 : 0;
+          epDescriptors[e][bank].PCKSIZE.MULTI_PACKET_SIZE = bank == 0 ? endpoint->rxBufferSize : 0;
+          epDescriptors[e][bank].PCKSIZE.AUTO_ZLP = 1;
+
+        } else {
+          target::USB.DEVICE.EPCFG[e].reg.setEPTYPE(bank, 0);
+        }
+      }
+    }
+
+    target::USB.DEVICE.DESCADD.setDESCADD((unsigned long)&epDescriptors);
+
+    for (int e = 0; endpoints[e]; e++) {
+      UsbEndpoint *endpoint = endpoints[e];
+      target::USB.DEVICE.EPINTENSET[e].reg.setRXSTP(true).setTRCPT(0, true).setTRCPT(1, true);
+    }
+  }
+
 public:
   unsigned char serialNumber[SERIAL_NUMBER_LENGTH + 1];
 
@@ -96,44 +134,6 @@ public:
   }
 
   void setAddress(int address) { target::USB.DEVICE.DADD = 0x80 | address; }
-
-  void usbReset() {
-
-    for (int e = 0; endpoints[e]; e++) {
-      UsbEndpoint *endpoint = endpoints[e];
-
-      for (int bank = 0; bank <= 1; bank++) {
-        unsigned char *data = bank ? endpoint->txBufferPtr : endpoint->rxBufferPtr;
-        int size = bank ? endpoint->txPacketSize : endpoint->rxPacketSize;
-
-        if (endpoint && data && size) {
-          target::USB.DEVICE.EPCFG[e].reg.setEPTYPE(bank, 1 + endpoint->transferType);
-          epDescriptors[e][bank].ADDR = data;
-          epDescriptors[e][bank].PCKSIZE.SIZE =
-              size == 0
-                  ? 0
-                  : size == 16
-                        ? 1
-                        : size == 32
-                              ? 2
-                              : size == 64 ? 3
-                                           : size == 128 ? 4 : size == 256 ? 5 : size == 512 ? 6 : size == 1023 ? 7 : 0;
-          epDescriptors[e][bank].PCKSIZE.MULTI_PACKET_SIZE = bank == 0 ? endpoint->rxBufferSize : 0;
-          epDescriptors[e][bank].PCKSIZE.AUTO_ZLP = 1;
-
-        } else {
-          target::USB.DEVICE.EPCFG[e].reg.setEPTYPE(bank, 0);
-        }
-      }
-    }
-
-    target::USB.DEVICE.DESCADD.setDESCADD((unsigned long)&epDescriptors);
-
-    for (int e = 0; endpoints[e]; e++) {
-      UsbEndpoint *endpoint = endpoints[e];
-      target::USB.DEVICE.EPINTENSET[e].reg.setRXSTP(true).setTRCPT(0, true).setTRCPT(1, true);
-    }
-  }
 
   void interruptHandlerUSB() {
     if (target::USB.DEVICE.INTFLAG.getEORST()) {
