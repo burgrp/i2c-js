@@ -1,0 +1,28 @@
+var searchData=
+[
+  ['sercom0_84',['SERCOM0',['../namespacetarget_1_1interrupts_1_1External.html#a980ad118f38bfe8903930a1c220e1654',1,'target::interrupts::External::SERCOM0()'],['../namespacetarget_1_1interrupts_1_1All.html#ac0855f5b6f7498ce750a5a9e1069b05a',1,'target::interrupts::All::SERCOM0()']]],
+  ['sercom1_85',['SERCOM1',['../namespacetarget_1_1interrupts_1_1External.html#a439c378d8b7fc3a4c49e0082957f50cf',1,'target::interrupts::External::SERCOM1()'],['../namespacetarget_1_1interrupts_1_1All.html#ae0bb7c76a5dc98c6ac065253680bf39d',1,'target::interrupts::All::SERCOM1()']]],
+  ['serial_86',['SERIAL',['../namespaceusbd.html#a646c90cd88157c31ef98bb10ad607982a58b3b6d78e16d6f278c24862525a874e',1,'usbd']]],
+  ['serial_5fnumber_5flength_87',['SERIAL_NUMBER_LENGTH',['../namespaceatsamd_1_1usbd.html#af91ae084659a0e3cdde464c5765a6a55',1,'atsamd::usbd']]],
+  ['serialnumber_88',['serialNumber',['../classatsamd_1_1usbd_1_1AtSamdUsbDevice.html#a9f7573299b3837a630a8e611a8b4795e',1,'atsamd::usbd::AtSamdUsbDevice']]],
+  ['setaddress_89',['setAddress',['../classatsamd_1_1usbd_1_1AtSamdUsbDevice.html#ae250b6a7bec6fa679aca91509e487e0b',1,'atsamd::usbd::AtSamdUsbDevice::setAddress()'],['../classusbd_1_1UsbDevice.html#af818490fd2ae6f4a89a668297f7f38b6',1,'usbd::UsbDevice::setAddress()']]],
+  ['setup_90',['setup',['../classTestInterface.html#aeb5d68a72c584fba7ce122b0b4d8aa22',1,'TestInterface::setup()'],['../classusbd_1_1UsbControlEndpoint.html#a290e404daab2e404c4a10a27f07ff01d',1,'usbd::UsbControlEndpoint::setup()'],['../classusbd_1_1UsbDevice.html#a90db56efff184ef71dfba4388c534534',1,'usbd::UsbDevice::setup()'],['../classusbd_1_1UsbEndpoint.html#a25095d4aa7f7a292841e20cd0468f639',1,'usbd::UsbEndpoint::setup()'],['../classusbd_1_1UsbInterface.html#a296281fbdff5bc42f4457ca807a61637',1,'usbd::UsbInterface::setup()']]],
+  ['silicon_2ecpp_91',['silicon.cpp',['../silicon_8cpp.html',1,'']]],
+  ['silicon_2ehpp_92',['silicon.hpp',['../silicon_8hpp.html',1,'']]],
+  ['size_93',['SIZE',['../classatsamd_1_1usbd_1_1AtSamdUsbDevice.html#a43b9918d33b35b29b457bfa2697002d9',1,'atsamd::usbd::AtSamdUsbDevice']]],
+  ['stall_94',['stall',['../classatsamd_1_1usbd_1_1AtSamdUsbDevice.html#a86619e7620eafeadbf3aa2c13259127c',1,'atsamd::usbd::AtSamdUsbDevice::stall()'],['../classusbd_1_1UsbDevice.html#a6935f963201942d09cc02640eb885d5f',1,'usbd::UsbDevice::stall()'],['../classusbd_1_1UsbEndpoint.html#ab30e7409c90da01465cb619888483c3c',1,'usbd::UsbEndpoint::stall()']]],
+  ['standard_95',['STANDARD',['../namespaceusbd.html#a2fa5cd05627b36e8c0e7bfd1950487f6ac69c4f82f48b83e8ae8f5fed300ed6fb',1,'usbd']]],
+  ['starttx_96',['startTx',['../classatsamd_1_1usbd_1_1AtSamdUsbDevice.html#af285e532e9428b30ee36b5a7fcd35cb3',1,'atsamd::usbd::AtSamdUsbDevice::startTx()'],['../classusbd_1_1UsbDevice.html#a7b6ee822902f89403b53c5bd3fe969f9',1,'usbd::UsbDevice::startTx()'],['../classusbd_1_1UsbEndpoint.html#a49b569d23a021e447dfe46e343374767',1,'usbd::UsbEndpoint::startTx()']]],
+  ['status_5fbk_97',['STATUS_BK',['../classatsamd_1_1usbd_1_1AtSamdUsbDevice.html#a0f5738245f789ab298d3af4d592219d8',1,'atsamd::usbd::AtSamdUsbDevice']]],
+  ['std_5frequest_5fget_5fconfiguration_98',['STD_REQUEST_GET_CONFIGURATION',['../namespaceusbd.html#a24d9881c7dbee61f2180c18abd2a4d7f',1,'usbd']]],
+  ['std_5frequest_5fget_5fdescriptor_99',['STD_REQUEST_GET_DESCRIPTOR',['../namespaceusbd.html#a53d70daa1c456bf2f8ecb63c9bfe2462',1,'usbd']]],
+  ['std_5frequest_5fget_5fstatus_100',['STD_REQUEST_GET_STATUS',['../namespaceusbd.html#a348079b4ce928b036a62427c28b76027',1,'usbd']]],
+  ['std_5frequest_5fset_5faddress_101',['STD_REQUEST_SET_ADDRESS',['../namespaceusbd.html#a544f73d6fa3437ac116d7faea68119d6',1,'usbd']]],
+  ['std_5frequest_5fset_5fconfiguration_102',['STD_REQUEST_SET_CONFIGURATION',['../namespaceusbd.html#a7cb3fc6d303d3baad02c204442b32fe7',1,'usbd']]],
+  ['stringdescriptorid_103',['StringDescriptorID',['../namespaceusbd.html#a646c90cd88157c31ef98bb10ad607982',1,'usbd']]],
+  ['subpid_104',['SUBPID',['../classatsamd_1_1usbd_1_1AtSamdUsbDevice.html#a76c11d4919b25265dba84f92c72151c7',1,'atsamd::usbd::AtSamdUsbDevice']]],
+  ['svcall_105',['SVCall',['../namespacetarget_1_1interrupts_1_1Internal.html#a874bbc87c2cd76a88d34366ab4a72d5a',1,'target::interrupts::Internal::SVCall()'],['../namespacetarget_1_1interrupts_1_1All.html#a8080d2da8bab9e8cd3b144f947ff1172',1,'target::interrupts::All::SVCall()']]],
+  ['synchronous_106',['SYNCHRONOUS',['../namespaceusbd.html#a12c45e61d0601c20bed7bba39ff5496ca3c3fd90e2dc37b92c4601358298e8ec9',1,'usbd']]],
+  ['sysctrl_107',['SYSCTRL',['../namespacetarget_1_1interrupts_1_1External.html#a5a94aa1c8760080686f5171d3687728e',1,'target::interrupts::External::SYSCTRL()'],['../namespacetarget_1_1interrupts_1_1All.html#a4e1d8e38e6c4791545737ab8c4925b56',1,'target::interrupts::All::SYSCTRL()']]],
+  ['systick_108',['SysTick',['../namespacetarget_1_1interrupts_1_1Internal.html#ae0cee22499fe18f6de309b8cf6c0814c',1,'target::interrupts::Internal::SysTick()'],['../namespacetarget_1_1interrupts_1_1All.html#afaed199fe45bb74027b9d75983e3cfe6',1,'target::interrupts::All::SysTick()']]]
+];

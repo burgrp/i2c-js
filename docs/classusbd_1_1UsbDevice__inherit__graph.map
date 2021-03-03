@@ -1,0 +1,5 @@
+<map id="usbd::UsbDevice" name="usbd::UsbDevice">
+<area shape="rect" id="node1" title="USB device base class." alt="" coords="59,5,190,32"/>
+<area shape="rect" id="node2" href="$classatsamd_1_1usbd_1_1AtSamdUsbDevice.html" title=" " alt="" coords="5,80,244,107"/>
+<area shape="rect" id="node3" href="$classTestDevice.html" title=" " alt="" coords="78,155,171,181"/>
+</map>

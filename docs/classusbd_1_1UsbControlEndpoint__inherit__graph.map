@@ -1,0 +1,4 @@
+<map id="usbd::UsbControlEndpoint" name="usbd::UsbControlEndpoint">
+<area shape="rect" id="node1" title="USB control endpoint implementation class." alt="" coords="5,80,196,107"/>
+<area shape="rect" id="node2" href="$classusbd_1_1UsbEndpoint.html" title="USB endpoint base class." alt="" coords="29,5,172,32"/>
+</map>
