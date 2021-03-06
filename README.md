@@ -21,10 +21,11 @@ Configures GPIO pin as input.
 ##### pin
 number of pin to configure 
 ##### options
-- pullUpDown: `true` for pull-up, `false` for pull-down, `undefined` for floating 
-- irqRisingEdge: IRQ on rising edge
-- irqFallingEdge: IRQ on falling edge
-- irqHandler: IRQ handler(state, pin) to call
+- **pullUp**: `true` to enable pull-up 
+- **pullDown**: `true` to enable pull-down 
+- **irqRisingEdge**: `true` to enable IRQ on rising edge
+- **irqFallingEdge**: `true` to enable IRQ on falling edge
+- **irqHandler**: IRQ handler(state, pin) to call
 
 ### async gpioReadInput(pin)
 Get logic level on pin.

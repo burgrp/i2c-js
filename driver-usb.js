@@ -101,12 +101,13 @@ module.exports = async ({ vid = "1209", pid = "7070", serial }) => {
             await requestOut(REQUEST_I2C_WRITE, address, data);
         },
 
-        async gpioConfigureInput(pin, { pushPull: pullUpDown, irqRisingEdge, irqFallingEdge, irqHandler }) {
-            await requestOut(REQUEST_GPIO_CONFIGURE_OUTPUT, 
+        async gpioConfigureInput(pin, { pullUp, pullDown, irqRisingEdge, irqFallingEdge, irqHandler }) {
+            await requestOut(REQUEST_GPIO_CONFIGURE_INPUT,
                 pin |
-                (pullUpDown === true? 2: pullUpDown == false?1: 0) << 8 |
-                (irqRisingEdge? 1: 0) << 10 |
-                (irqFallingEdge? 1: 0) << 11 
+                (pullUp ? 1 : 0) << 8 |
+                (pullDown ? 1 : 0) << 9 |
+                (irqRisingEdge ? 1 : 0) << 10 |
+                (irqFallingEdge ? 1 : 0) << 11
             );
         },
 
@@ -115,11 +116,11 @@ module.exports = async ({ vid = "1209", pid = "7070", serial }) => {
         },
 
         async gpioConfigureOutput(pin) {
-            
+            await requestOut(REQUEST_GPIO_CONFIGURE_OUTPUT, pin | state === true ? 1 : state === false ? 0 : 2);
         },
 
         async gpioWriteOutput(pin, state) {
-
+            await requestOut(REQUEST_GPIO_WRITE_OUTPUT, pin | state === true ? 1 : state === false ? 0 : 2);
         },
 
         async close() {
