@@ -1,5 +1,5 @@
 {
-  "name": "i2c",
+  "name": "i2c-js",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
@@ -19,7 +19,6 @@
   "dependencies": {
     "debug": "^4.3.1",
     "i2c-bus-promise": "^2.0.0",
-    "node-hid": "^2.1.1",
-    "promise-critical-section": "0.0.2"
+    "usb": "^1.6.5"
   }
 }
