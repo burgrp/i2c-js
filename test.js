@@ -18,6 +18,11 @@ async function start() {
                         console.info("R", await i2c.i2cRead(0x4F, 2));
                         console.info("W");
                         await i2c.i2cWrite(0x4F, Buffer.from("ABC"));
+                        // await Promise.all([
+                        //     i2c.i2cRead(0x4F, 2),
+                        //     i2c.i2cWrite(0x4F, Buffer.from("ABC"))
+                        // ]);
+                        // console.info("RW");
                     } catch (e) {
                         if (e.message === "LIBUSB_ERROR_NO_DEVICE") {
                             break;
@@ -25,7 +30,7 @@ async function start() {
                             console.error("Error", e);
                         }
                     }
-                    await new Promise(resolve => setTimeout(resolve, 500));
+                    // await new Promise(resolve => setTimeout(resolve, 500));
                 }
             } finally {
                 await i2c.close();

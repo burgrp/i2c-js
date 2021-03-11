@@ -1,4 +1,5 @@
 const usb = require("usb");
+const CriticalSection = require("promise-critical-section");
 const { checkRead, checkWrite } = require("./common.js");
 
 const REQUEST_GPIO_CONFIGURE_INPUT = 2;
@@ -7,6 +8,8 @@ const REQUEST_GPIO_CONFIGURE_OUTPUT = 4;
 const REQUEST_GPIO_WRITE_OUTPUT = 5;
 
 module.exports = async ({ vid = "1209", pid = "7070", serial }) => {
+
+    let i2cEndpointSection = new CriticalSection();
 
     let device;
 
@@ -106,21 +109,31 @@ module.exports = async ({ vid = "1209", pid = "7070", serial }) => {
     return {
 
         async i2cRead(address, length) {
-            let [, reply] = await Promise.all([
-                i2cOut.transfer(Buffer.from([address << 1 | 1, length])),
-                i2cIn.transfer(length)
-            ]);
-            checkRead(reply.length, length);
-            return reply.slice(reply);
+            await i2cEndpointSection.enter();
+            try {
+                let [, reply] = await Promise.all([
+                    i2cOut.transfer(Buffer.from([address << 1 | 1, length])),
+                    i2cIn.transfer(length)
+                ]);
+                checkRead(reply.length, length);
+                return reply.slice(reply);
+            } finally {
+                i2cEndpointSection.leave();
+            }
         },
 
         async i2cWrite(address, data) {
-            let [, reply] = await Promise.all([
-                i2cOut.transfer(Buffer.concat([Buffer.from([address << 1]), data])),
-                i2cIn.transfer(1)
-            ]);
-            checkRead(reply.length, 1);
-            checkWrite(data.length, reply[0]);
+            await i2cEndpointSection.enter();
+            try {
+                let [, reply] = await Promise.all([
+                    i2cOut.transfer(Buffer.concat([Buffer.from([address << 1]), data])),
+                    i2cIn.transfer(1)
+                ]);
+                checkRead(reply.length, 1);
+                checkWrite(data.length, reply[0]);
+            } finally {
+                i2cEndpointSection.leave();
+            }
         },
 
         async gpioConfigureInput(pin, { pullUp, pullDown, irqRisingEdge, irqFallingEdge, irqHandler }) {
