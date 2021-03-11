@@ -106,7 +106,7 @@ module.exports = async ({ vid = "1209", pid = "7070", serial }) => {
     return {
 
         async i2cRead(address, length) {
-            let dataPromise = i2cIn.transfer(2);
+            let dataPromise = i2cIn.transfer(length);
             await i2cOut.transfer(Buffer.from([address << 1 | 1, length]));
             let data = await dataPromise;
             checkRead(data.length, length);
