@@ -1,8 +1,6 @@
 const usb = require("usb");
 const { checkRead, checkWrite } = require("./common.js");
 
-const REQUEST_I2C_READ = 0;
-const REQUEST_I2C_WRITE = 1;
 const REQUEST_GPIO_CONFIGURE_INPUT = 2;
 const REQUEST_GPIO_READ_INPUT = 3;
 const REQUEST_GPIO_CONFIGURE_OUTPUT = 4;
@@ -45,13 +43,29 @@ module.exports = async ({ vid = "1209", pid = "7070", serial }) => {
     }
 
     if (!device) {
-        throw new Error("USB device not found");
+        throw new Error("LIBUSB_ERROR_NO_DEVICE");
     }
 
     let interface = device.interfaces[0];
     interface.claim();
 
-    function requestIn(requestId, value, length) {
+    interface.endpoints.forEach(ep => ep.timeout = 1000);
+    let [i2cOut, i2cIn, irqIn] = interface.endpoints.map(ep => ({
+        ...ep,
+        transfer(lengthOrData) {
+            return new Promise((resolve, reject) => {
+                ep.transfer(lengthOrData, (error, data) => {
+                    if (error) {
+                        reject(error);
+                    } else {
+                        resolve(data);
+                    }
+                });
+            });
+        }
+    }));
+
+    function interfaceCtrlRequestIn(requestId, value, length) {
         return new Promise((resolve, reject) => {
             device.controlTransfer(
                 0xC1, // interface vendor IN
@@ -70,10 +84,10 @@ module.exports = async ({ vid = "1209", pid = "7070", serial }) => {
         });
     }
 
-    function requestOut(requestId, value, data) {
+    function interfaceCtrlRequestOut(requestId, value, data) {
         return new Promise((resolve, reject) => {
             device.controlTransfer(
-                0x41, // interface vendor IN
+                0x41, // interface vendor OUT
                 requestId,
                 value,
                 interface.interfaceNumber,
@@ -87,22 +101,24 @@ module.exports = async ({ vid = "1209", pid = "7070", serial }) => {
                 }
             );
         });
-    }
+    }   
 
     return {
 
         async i2cRead(address, length) {
-            let data = await requestIn(REQUEST_I2C_READ, address, length);
+            let dataPromise = i2cIn.transfer(2);
+            await i2cOut.transfer(Buffer.from([address << 1 | 1, length]));
+            let data = await dataPromise;
             checkRead(data.length, length);
-            return data;
+            return data.slice(data);
         },
 
         async i2cWrite(address, data) {
-            await requestOut(REQUEST_I2C_WRITE, address, data);
+            //await interfaceCtrlRequestOut(REQUEST_I2C_WRITE, address, data);
         },
 
         async gpioConfigureInput(pin, { pullUp, pullDown, irqRisingEdge, irqFallingEdge, irqHandler }) {
-            await requestOut(REQUEST_GPIO_CONFIGURE_INPUT,
+            await interfaceCtrlRequestOut(REQUEST_GPIO_CONFIGURE_INPUT,
                 pin |
                 (pullUp ? 1 : 0) << 8 |
                 (pullDown ? 1 : 0) << 9 |
@@ -112,15 +128,15 @@ module.exports = async ({ vid = "1209", pid = "7070", serial }) => {
         },
 
         async gpioReadInput(pin) {
-
+            return (await interfaceCtrlRequestIn(REQUEST_GPIO_READ_INPUT, pin)).readUInt8(0) === 1;
         },
 
         async gpioConfigureOutput(pin) {
-            await requestOut(REQUEST_GPIO_CONFIGURE_OUTPUT, pin | state === true ? 1 : state === false ? 0 : 2);
+            await interfaceCtrlRequestOut(REQUEST_GPIO_CONFIGURE_OUTPUT, pin | state === true ? 1 : state === false ? 0 : 2);
         },
 
         async gpioWriteOutput(pin, state) {
-            await requestOut(REQUEST_GPIO_WRITE_OUTPUT, pin | state === true ? 1 : state === false ? 0 : 2);
+            await interfaceCtrlRequestOut(REQUEST_GPIO_WRITE_OUTPUT, pin | state === true ? 1 : state === false ? 0 : 2);
         },
 
         async close() {
