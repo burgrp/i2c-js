@@ -101,20 +101,26 @@ module.exports = async ({ vid = "1209", pid = "7070", serial }) => {
                 }
             );
         });
-    }   
+    }
 
     return {
 
         async i2cRead(address, length) {
-            let dataPromise = i2cIn.transfer(length);
-            await i2cOut.transfer(Buffer.from([address << 1 | 1, length]));
-            let data = await dataPromise;
-            checkRead(data.length, length);
-            return data.slice(data);
+            let [, reply] = await Promise.all([
+                i2cOut.transfer(Buffer.from([address << 1 | 1, length])),
+                i2cIn.transfer(length)
+            ]);
+            checkRead(reply.length, length);
+            return reply.slice(reply);
         },
 
         async i2cWrite(address, data) {
-            //await interfaceCtrlRequestOut(REQUEST_I2C_WRITE, address, data);
+            let [, reply] = await Promise.all([
+                i2cOut.transfer(Buffer.concat([Buffer.from([address << 1]), data])),
+                i2cIn.transfer(1)
+            ]);
+            checkRead(reply.length, 1);
+            checkWrite(data.length, reply[0]);
         },
 
         async gpioConfigureInput(pin, { pullUp, pullDown, irqRisingEdge, irqFallingEdge, irqHandler }) {

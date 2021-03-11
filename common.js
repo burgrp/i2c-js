@@ -8,7 +8,7 @@ module.exports = {
 
     checkWrite(actual, wanted) {
         if (actual !== wanted) {
-            throw `Could write only ${read} bytes from ${wanted}`;
+            throw `Could write only ${actual} bytes from ${wanted}`;
         }
     }
 
