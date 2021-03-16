@@ -1,3 +1,9 @@
+const CriticalSection = require("promise-critical-section");
+const Debug = require("debug")("i2c");
+
+let log = ["debug", "info", "warn", "error"]
+    .reduce((acc, level) => ({ ...acc, [level]: Debug.extend(level) }));
+
 module.exports = async portStr => {
 
     if (!portStr) {
@@ -5,12 +11,47 @@ module.exports = async portStr => {
     }
 
     let params = portStr.split(",").map(p => p.trim());
-    let driver = params.shift();
+    let name = params.shift();
 
     params = params.map(p => p
         .split("=")
         .map(s => s.trim())
-    ).reduce((acc, [k, v]) => ({...acc, [k]: v === undefined? true: v}), {});
+    ).reduce((acc, [k, v]) => ({ ...acc, [k]: v === undefined ? true : v }), {});
 
-    return await require(`./driver-${driver}.js`)(params);
+    let criticalSection = new CriticalSection();
+
+    let driver;
+
+    return ["i2cRead", "i2cWrite", "close"].reduce((acc, method) => ({
+        ...acc, [method]: async (...args) => {
+
+            await criticalSection.enter();
+
+            try {
+
+                if (!driver) {
+                    log.info("Opening driver")
+                    driver = await require(`./driver-${name}.js`)(params);
+                }
+
+                try {
+                    return await driver[method](...args);
+                } catch (e) {
+                    if (await driver.needsReopen(e)) {
+                        try {
+                            log.info(`Closing driver because of error: ${e.message | e}`);
+                            await driver.close();
+                        } catch (e) {
+                            log.warn("Could not close ")
+                        }
+                        driver = null;
+                    }
+                    throw e;
+                }
+            } finally {
+                criticalSection.leave();
+            }
+
+        }
+    }), {});
 }
