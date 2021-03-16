@@ -1,10 +1,9 @@
 const usb = require("usb");
 const { checkRead, checkWrite } = require("./common.js");
 
-const REQUEST_GPIO_CONFIGURE_INPUT = 2;
-const REQUEST_GPIO_READ_INPUT = 3;
-const REQUEST_GPIO_CONFIGURE_OUTPUT = 4;
-const REQUEST_GPIO_WRITE_OUTPUT = 5;
+const REQUEST_GPIO_CONFIGURE = 1;
+const REQUEST_GPIO_READ = 2;
+const REQUEST_GPIO_WRITE = 3;
 
 module.exports = async ({ vid = "1209", pid = "7070", serial }) => {
 
@@ -85,7 +84,7 @@ module.exports = async ({ vid = "1209", pid = "7070", serial }) => {
         });
     }
 
-    function interfaceCtrlRequestOut(requestId, value, data) {
+    function interfaceCtrlRequestOut(requestId, value, data = Buffer.from([])) {
         return new Promise((resolve, reject) => {
             device.controlTransfer(
                 0x41, // interface vendor OUT
@@ -103,6 +102,8 @@ module.exports = async ({ vid = "1209", pid = "7070", serial }) => {
             );
         });
     }
+
+
 
     return {
 
@@ -124,34 +125,44 @@ module.exports = async ({ vid = "1209", pid = "7070", serial }) => {
             checkWrite(data.length, reply[0]);
         },
 
-        async gpioConfigureInput(pin, { pullUp, pullDown, irqRisingEdge, irqFallingEdge, irqHandler }) {
-            await interfaceCtrlRequestOut(REQUEST_GPIO_CONFIGURE_INPUT,
-                pin |
-                (pullUp ? 1 : 0) << 8 |
-                (pullDown ? 1 : 0) << 9 |
-                (irqRisingEdge ? 1 : 0) << 10 |
-                (irqFallingEdge ? 1 : 0) << 11
-            );
-        },
+        async configureGpio(gpioConfig) {
 
-        async gpioReadInput(pin) {
-            return (await interfaceCtrlRequestIn(REQUEST_GPIO_READ_INPUT, pin)).readUInt8(0) === 1;
-        },
+            for (let gpio of gpioConfig) {
+                await interfaceCtrlRequestOut(REQUEST_GPIO_CONFIGURE,
+                    gpio.index |
+                    (
+                        gpio.direction === "out" ?
+                            1 << 8 |
+                            (gpio.setting.openDrain ? 1 : 0) << 9 |
+                            (gpio.setting.pullUp ? 1 : 0) << 10
+                            :
+                            0 << 8 |
+                            (gpio.setting.pullDown ? 1 : 0) << 9 |
+                            (gpio.setting.pullUp ? 1 : 0) << 10 |
+                            (gpio.setting.irqRisingEdge ? 1 : 0) << 11 |
+                            (gpio.setting.irqFallingEdge ? 1 : 0) << 12
+                    )
+                );
 
-        async gpioConfigureOutput(pin) {
-            await interfaceCtrlRequestOut(REQUEST_GPIO_CONFIGURE_OUTPUT, pin | state === true ? 1 : state === false ? 0 : 2);
-        },
-
-        async gpioWriteOutput(pin, state) {
-            await interfaceCtrlRequestOut(REQUEST_GPIO_WRITE_OUTPUT, pin | state === true ? 1 : state === false ? 0 : 2);
-        },        
-
-        async close() {
-            device.close();
-        },
-
-        async needsReopen(error) {
-            return error.message === "LIBUSB_ERROR_NO_DEVICE";
         }
+
+
+    },
+
+        async gpioRead(pin) {
+        return (await interfaceCtrlRequestIn(REQUEST_GPIO_READ, pin, 1)).readUInt8(0) === 1;
+    },
+
+    async gpioWrite(pin, state) {
+        await interfaceCtrlRequestOut(REQUEST_GPIO_WRITE, pin | (state? 0x100 : 0x00));
+    },
+
+    async close() {
+        device.close();
+    },
+
+    async needsReopen(error) {
+        return error.message === "LIBUSB_ERROR_NO_DEVICE";
     }
+}
 }
