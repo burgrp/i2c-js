@@ -45,6 +45,7 @@ module.exports = async portStr => {
                 if (!driver) {
                     log.info("Opening driver")
                     driver = await require(`./driver-${name}.js`)(params);
+                    log.debug("Configuring GPIO:", gpio);
                     await driver.configureGpio(gpio);
                 }
 
