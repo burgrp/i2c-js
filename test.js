@@ -8,22 +8,24 @@ async function start() {
     while (true) {
         // await i2c.trigger(true);
         // await i2c.trigger(false);           
-       
+
         try {
             console.info("R", await i2c.i2cRead(0x4F, 2));
             console.info("W");
-            //await i2c.i2cWrite(0x4F, Buffer.from("ABC"));
+            await i2c.i2cWrite(0x4F, Buffer.from("ABC"));
             // await Promise.all([
             //     i2c.i2cRead(0x4F, 2),
             //     i2c.i2cWrite(0x4F, Buffer.from("ABC"))
             // ]);
-            console.info("RW");
+            // console.info("RW");
+
             await i2c.setTrigger(0);
             await i2c.setTrigger(1);
+            console.error("IRQ:", await i2c.getIrq());
         } catch (e) {
             console.error(e);
         }
-        await new Promise(resolve => setTimeout(resolve, 500));
+        //await new Promise(resolve => setTimeout(resolve, 50));
     }
 
 }

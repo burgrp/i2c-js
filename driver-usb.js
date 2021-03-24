@@ -144,25 +144,25 @@ module.exports = async ({ vid = "1209", pid = "7070", serial }) => {
                     )
                 );
 
-        }
+            }
 
 
-    },
+        },
 
         async gpioRead(pin) {
-        return (await interfaceCtrlRequestIn(REQUEST_GPIO_READ, pin, 1)).readUInt8(0) === 1;
-    },
+            return (await interfaceCtrlRequestIn(REQUEST_GPIO_READ, pin, 8)).readUInt8(0) === 1;
+        },
 
-    async gpioWrite(pin, state) {
-        await interfaceCtrlRequestOut(REQUEST_GPIO_WRITE, pin | (state? 0x100 : 0x00));
-    },
+        async gpioWrite(pin, state) {
+            await interfaceCtrlRequestOut(REQUEST_GPIO_WRITE, pin | (state ? 0x100 : 0x00));
+        },
 
-    async close() {
-        device.close();
-    },
+        async close() {
+            device.close();
+        },
 
-    async needsReopen(error) {
-        return error.message === "LIBUSB_ERROR_NO_DEVICE";
+        async needsReopen(error) {
+            return error.message === "LIBUSB_ERROR_NO_DEVICE";
+        }
     }
-}
 }

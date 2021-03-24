@@ -23,11 +23,11 @@ module.exports = async portStr => {
 
     let gpio = Object.entries(params)
         .filter(([k, v]) => k.startsWith("gpio") && k !== "gpio")
-        .map(([k,v]) => ({
-                name: k.substring(4),
-                index: parseInt(v.split(".")[0]),
-                direction: v.split(".")[1] || "in",
-                setting: v.split(".").slice(2).reduce((acc, k) => ({ ...acc, [k]: true }), {})
+        .map(([k, v]) => ({
+            name: k.substring(4),
+            index: parseInt(v.split(".")[0]),
+            direction: v.split(".")[1] || "in",
+            setting: v.split(".").slice(2).reduce((acc, k) => ({ ...acc, [k]: true }), {})
         }));
 
     let criticalSection = new CriticalSection();
@@ -35,7 +35,7 @@ module.exports = async portStr => {
     let driver;
 
     let wrapper = ["i2cRead", "i2cWrite", "gpioRead", "gpioWrite", "close"].reduce((acc, method) => ({
-        ...acc, 
+        ...acc,
         [method]: async (...args) => {
 
             await criticalSection.enter();
@@ -72,11 +72,17 @@ module.exports = async portStr => {
     }), {});
 
     return gpio.reduce((acc, g) => ({
-                ...acc,
-                ["set" + g.name]: async function(value) {
-                    log.debug("set", g.name, value);
-                    await this.gpioWrite(g.index, value);
-                }
+        ...acc,
 
-            }), wrapper);
+        ["set" + g.name]: async function (value) {
+            log.debug("set", g.name, value);
+            await this.gpioWrite(g.index, value);
+        },
+
+        ["get" + g.name]: async function (value) {
+            log.debug("get", g.name);
+            return await this.gpioRead(g.index);
+        },
+
+    }), wrapper);
 }
