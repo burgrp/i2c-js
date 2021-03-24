@@ -13,17 +13,17 @@ async function start() {
     while (true) {
         try {
             await i2c.nop();
-            //console.info("R", await i2c.i2cRead(0x4F, 2));
-            // console.info("W");
-            // await i2c.i2cWrite(0x4F, Buffer.from("ABC"));
+            console.info("R", await i2c.i2cRead(0x4F, 2));
+            console.info("W");
+            await i2c.i2cWrite(0x4F, Buffer.from("ABC"));
 
-            // await i2c.setTrigger(0);
-            // await i2c.setTrigger(1);
-            // console.info("IRQ:", await i2c.getIrq());
+            await i2c.setTrigger(0);
+            await i2c.setTrigger(1);
+            console.info("IRQ:", await i2c.getIrq());
         } catch (e) {
             console.error(e);
         }
-        await new Promise(resolve => setTimeout(resolve, 500));
+        //await new Promise(resolve => setTimeout(resolve, 500));
     }
 
 }
