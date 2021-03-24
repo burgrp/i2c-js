@@ -46,6 +46,9 @@ module.exports = async ({ vid = "1209", pid = "7070", serial }) => {
         throw new Error("LIBUSB_ERROR_NO_DEVICE");
     }
 
+    let needsReopen;
+    let irqHanler;
+
     let interface = device.interfaces[0];
     interface.claim();
 
@@ -64,6 +67,22 @@ module.exports = async ({ vid = "1209", pid = "7070", serial }) => {
             });
         }
     }));
+
+    async function readIrq() {
+        while (true) {
+            try {
+                let data = await irqIn.transfer(1);
+                console.info("IRQ>>>>>:", data);
+            } catch (e) {
+                if (e.message !== "LIBUSB_TRANSFER_TIMED_OUT") {
+                    needsReopen = e;
+                    break;
+                }
+            }
+        }
+    }
+
+    readIrq();
 
     function interfaceCtrlRequestIn(requestId, value, length) {
         return new Promise((resolve, reject) => {
@@ -102,8 +121,6 @@ module.exports = async ({ vid = "1209", pid = "7070", serial }) => {
             );
         });
     }
-
-
 
     return {
 
@@ -145,8 +162,6 @@ module.exports = async ({ vid = "1209", pid = "7070", serial }) => {
                 );
 
             }
-
-
         },
 
         async gpioRead(pin) {
@@ -157,11 +172,19 @@ module.exports = async ({ vid = "1209", pid = "7070", serial }) => {
             await interfaceCtrlRequestOut(REQUEST_GPIO_WRITE, pin | (state ? 0x100 : 0x00));
         },
 
+        async onIrq(handler) {
+            irqHanler = handler;
+        },
+
         async close() {
             device.close();
         },
 
-        async needsReopen(error) {
+        async driverNeedsReopen() {
+            return needsReopen;
+        },
+
+        async errorNeedsReopen(error) {
             return error.message === "LIBUSB_ERROR_NO_DEVICE";
         }
     }

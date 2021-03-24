@@ -33,6 +33,35 @@ module.exports = async portStr => {
     let criticalSection = new CriticalSection();
 
     let driver;
+    let irqHandlers = {};
+
+    async function checkDriver() {
+
+        let driverNeedsReopen;
+        if (driver) {
+            driverNeedsReopen = await driver.driverNeedsReopen();
+            if (driverNeedsReopen) {
+                log.error("Driver needs reopen because:", driverNeedsReopen.message || driverNeedsReopen);
+            }
+        }
+
+        if (!driver || driverNeedsReopen) {
+            log.info("Opening driver")
+            driver = await require(`./driver-${name}.js`)(params);
+            log.debug("Configuring GPIO:", gpio);
+            await driver.configureGpio(gpio);
+            driver.onIrq(async (pin, edge) => {
+                let handler = irqHandlers[pin];
+                if (handler) {
+                    try {
+                        await handler(edge);
+                    } catch (e) {
+                        log.error("Error in IRQ handler:", e);
+                    }
+                }
+            });
+        }
+    }
 
     let wrapper = ["i2cRead", "i2cWrite", "gpioRead", "gpioWrite", "close"].reduce((acc, method) => ({
         ...acc,
@@ -42,18 +71,13 @@ module.exports = async portStr => {
 
             try {
 
-                if (!driver) {
-                    log.info("Opening driver")
-                    driver = await require(`./driver-${name}.js`)(params);
-                    log.debug("Configuring GPIO:", gpio);
-                    await driver.configureGpio(gpio);
-                }
+                await checkDriver();
 
                 try {
                     log.debug(method, ...args);
                     return await driver[method](...args);
                 } catch (e) {
-                    if (await driver.needsReopen(e)) {
+                    if (await driver.errorNeedsReopen(e)) {
                         try {
                             log.info(`Closing driver because of error: ${e.message | e}`);
                             await driver.close();
@@ -69,7 +93,11 @@ module.exports = async portStr => {
             }
 
         }
-    }), {});
+    }), {
+        async nop() {
+            await checkDriver();
+        }
+    });
 
     return gpio.reduce((acc, g) => ({
         ...acc,
@@ -83,6 +111,10 @@ module.exports = async portStr => {
             log.debug("get", g.name);
             return await this.gpioRead(g.index);
         },
+
+        ["on" + g.name]: function (handler) {
+            irqHandlers[g.index] = handler;
+        }
 
     }), wrapper);
 }
