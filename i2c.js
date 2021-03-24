@@ -50,14 +50,18 @@ module.exports = async portStr => {
             driver = await require(`./driver-${name}.js`)(params);
             log.debug("Configuring GPIO:", gpio);
             await driver.configureGpio(gpio);
-            driver.onIrq(async (pin, edge) => {
-                let handler = irqHandlers[pin];
-                if (handler) {
-                    try {
-                        await handler(edge);
-                    } catch (e) {
-                        log.error("Error in IRQ handler:", e);
+
+            driver.onIrq(async pinFlags => {
+                for (let pin = 0; pin < 32; pin++) {                    
+                    let handler = irqHandlers[pin];
+                    if (handler && (pinFlags >> pin) & 1) {
+                        try {
+                            await handler();
+                        } catch (e) {
+                            log.error("Error in IRQ handler:", e);
+                        }
                     }
+
                 }
             });
         }

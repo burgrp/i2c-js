@@ -47,7 +47,7 @@ module.exports = async ({ vid = "1209", pid = "7070", serial }) => {
     }
 
     let needsReopen;
-    let irqHanler;
+    let irqHandler;
 
     let interface = device.interfaces[0];
     interface.claim();
@@ -71,8 +71,10 @@ module.exports = async ({ vid = "1209", pid = "7070", serial }) => {
     async function readIrq() {
         while (true) {
             try {
-                let data = await irqIn.transfer(1);
-                console.info("IRQ>>>>>:", data);
+                let data = await irqIn.transfer(4);
+                if (irqHandler) {
+                    await irqHandler(data.readUInt32LE(0));
+                }
             } catch (e) {
                 if (e.message !== "LIBUSB_TRANSFER_TIMED_OUT") {
                     needsReopen = e;
@@ -173,7 +175,7 @@ module.exports = async ({ vid = "1209", pid = "7070", serial }) => {
         },
 
         async onIrq(handler) {
-            irqHanler = handler;
+            irqHandler = handler;
         },
 
         async close() {
