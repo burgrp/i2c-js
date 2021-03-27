@@ -8,8 +8,25 @@ async function action(asyncAction) {
         let connectionString = program.opts().connection || process.env.I2C;
         let i2c = await I2C(connectionString);
 
+        let loop = parseInt(program.opts().loop);
+
         try {
-            await asyncAction(i2c);
+
+            if (isFinite(loop)) {
+
+                while (true) {
+                    try {
+                        await asyncAction(i2c);
+                    } catch (e) {
+                        console.error("Error:", e.message || e);
+                    }
+                    await new Promise(resolve => setTimeout(resolve, loop))
+                }
+
+            } else {
+                await asyncAction(i2c);
+            }
+
         } finally {
             await i2c.close();
         }
@@ -23,6 +40,7 @@ async function action(asyncAction) {
 program.version(require("./package.json").version);
 
 program.option("-c, --connection <value>", "connection string, defaults to I2C environment variable");
+program.option("-l, --loop <waitMs>", "stay in infinite loop, wait n milliseconds after every iteration");
 
 program
     .command("read <address> <length>")
