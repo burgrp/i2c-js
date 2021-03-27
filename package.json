@@ -2,13 +2,13 @@
   "name": "@burgrp/i2c",
   "version": "1.0.2",
   "description": "JavaScript binding for I²C with support for multiple drivers",
-  "main": "index.js",
+  "main": "i2c.js",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/burgrp/i2c-js.git"
   },
   "bin": {
-    "j2c": "./cli.js"
+    "i2c": "./cli.js"
   },
   "author": "",
   "license": "CC-BY-SA",

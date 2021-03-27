@@ -182,5 +182,5 @@ Commands:
 
 CLI can be installed globally as follows:
 ```shell
-
+sudo npm install --unsafe-perm --global @burgrp/i2c
 ```
