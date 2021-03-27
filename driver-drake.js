@@ -7,7 +7,6 @@ const REQUEST_GPIO_WRITE = 3;
 
 module.exports = async ({ vid = "1209", pid = "7070", serial }) => {
 
-
     let device;
 
     if (serial) {
@@ -40,6 +39,9 @@ module.exports = async ({ vid = "1209", pid = "7070", serial }) => {
         }
     } else {
         device = usb.findByIds(parseInt(`0x${vid}`), parseInt(`0x${pid}`));
+        if (device) {
+            device.open();
+        }
     }
 
     if (!device) {
@@ -47,6 +49,8 @@ module.exports = async ({ vid = "1209", pid = "7070", serial }) => {
     }
 
     let needsReopen;
+    let closing = false;
+    let irqLoopDone = false;
     let irqHandler;
 
     let interface = device.interfaces[0];
@@ -69,18 +73,22 @@ module.exports = async ({ vid = "1209", pid = "7070", serial }) => {
     }));
 
     async function readIrq() {
-        while (true) {
-            try {
-                let data = await irqIn.transfer(4);
-                if (irqHandler) {
-                    await irqHandler(data.readUInt32LE(0));
-                }
-            } catch (e) {
-                if (e.message !== "LIBUSB_TRANSFER_TIMED_OUT") {
-                    needsReopen = e;
-                    break;
+        try {
+            while (!closing) {
+                try {
+                    let data = await irqIn.transfer(4);
+                    if (irqHandler) {
+                        await irqHandler(data.readUInt32LE(0));
+                    }
+                } catch (e) {
+                    if (e.message !== "LIBUSB_TRANSFER_TIMED_OUT") {
+                        needsReopen = e;
+                        break;
+                    }
                 }
             }
+        } finally {
+            irqLoopDone = true;
         }
     }
 
@@ -141,7 +149,7 @@ module.exports = async ({ vid = "1209", pid = "7070", serial }) => {
                 i2cIn.transfer(1)
             ]);
             checkRead(reply.length, 1);
-            checkWrite(data.length, reply[0]);
+            checkWrite(reply[0], data.length);
         },
 
         async configureGpio(gpioConfig) {
@@ -179,6 +187,10 @@ module.exports = async ({ vid = "1209", pid = "7070", serial }) => {
         },
 
         async close() {
+            closing = true;
+            while (!irqLoopDone) {
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
             device.close();
         },
 
