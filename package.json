@@ -1,6 +1,6 @@
 {
   "name": "@burgrp/i2c",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "JavaScript binding for I²C with support for multiple drivers",
   "main": "index.js",
   "repository": {
