@@ -2,7 +2,7 @@
 
 JavaScript binding for I²C with support for multiple drivers.
 
-To support also auxlarity signals such as interrupts or synchronizations, the library also allows GPIO configuration, reading and writing.
+To support auxiliary signals (such as interrupts), the library allows GPIO configuration, reading and writing.
 
 ## Example
 
