@@ -11,12 +11,11 @@ module.exports = async ({ bus: busNumber }) => {
         async i2cRead(address, length) {
             let buffer = Buffer.alloc(length);
             checkRead((await bus.i2cRead(parseInt(address), length, buffer)).bytesRead, length);
-            return Uint8Array.from(buffer);
+            return buffer;
         },
 
         async i2cWrite(address, data) {
-            let buffer = Buffer.from(data);
-            checkWrite((await bus.i2cWrite(parseInt(address), data.length, buffer)).bytesWritten, length);
+            checkWrite((await bus.i2cWrite(parseInt(address), data.length, data)).bytesWritten, length);
         },
 
         async configureGpio(gpioConfig) {
